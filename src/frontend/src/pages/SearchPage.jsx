@@ -1,38 +1,57 @@
 // src/frontend/src/pages/SearchPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Import useEffect jika ingin membersihkan error/hasil saat parameter berubah
 import SearchForm from '../components/SearchForm';
-import SearchResults from '../components/SearchResults'; // Buat file ini dulu (bisa kosong)
-import { findRecipes } from '../api/searchService'; // Impor fungsi API
+import SearchResults from '../components/SearchResults';
+import { findRecipes } from '../api/searchService';
 
 function SearchPage() {
-  const [searchResults, setSearchResults] = useState(null); // Untuk menyimpan hasil dari API
+  const [searchResults, setSearchResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentParams, setCurrentParams] = useState(null); // Opsional: simpan parameter pencarian terakhir
 
   // Fungsi ini akan dipanggil oleh SearchForm saat disubmit
   const handleSearch = async (searchParams) => {
     console.log('SearchPage: Menerima parameter ->', searchParams);
+    setCurrentParams(searchParams); // Simpan parameter saat ini
     setIsLoading(true);
     setError(null);
     setSearchResults(null); // Kosongkan hasil sebelumnya
 
     try {
-      // Panggil fungsi API dari searchService.js
-      const data = await findRecipes(searchParams.target, searchParams.algo, searchParams.mode);
+      // --- PERBAIKAN DI SINI ---
+      // Ekstrak semua parameter yang relevan, termasuk 'max' jika ada
+      const { target, algo, mode, max } = searchParams;
+      // Panggil findRecipes dengan semua argumen yang diperlukan
+      const data = await findRecipes(target, algo, mode, max); // Kirim 'max' sebagai argumen ke-4
+      // ------------------------
       setSearchResults(data); // Simpan hasil ke state
     } catch (err) {
-      setError(err.message || 'Terjadi kesalahan saat mencari resep.'); // Simpan pesan error
+      // Pastikan kita menangkap dan menampilkan pesan error dari findRecipes
+      setError(err.message || 'Terjadi kesalahan saat mencari resep.');
+      console.error("SearchPage Error:", err); // Log error lengkap di console frontend
     } finally {
       setIsLoading(false); // Set loading selesai (baik sukses maupun error)
     }
   };
 
+  // Opsional: Reset hasil jika input form berubah (misalnya target dikosongkan)
+  // useEffect(() => {
+  //   if (!currentParams?.target) { // Jika target kosong di parameter terakhir
+  //      setSearchResults(null);
+  //      setError(null);
+  //   }
+  // }, [currentParams]);
+
+
   return (
-    <div>
-      <h1>Pencari Resep Little Alchemy 2</h1>
+    // Tambahkan sedikit padding ke container utama
+    <div style={{ padding: '20px' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Pencari Resep Little Alchemy 2</h1>
+      {/* Kirim fungsi handleSearch ke SearchForm */}
       <SearchForm onSearchSubmit={handleSearch} isLoading={isLoading} />
-      <hr />
-      {/* Kirim hasil, loading, dan error ke komponen SearchResults */}
+
+      {/* Komponen SearchResults akan menampilkan hasil, loading, atau error */}
       <SearchResults results={searchResults} isLoading={isLoading} error={error} />
     </div>
   );
