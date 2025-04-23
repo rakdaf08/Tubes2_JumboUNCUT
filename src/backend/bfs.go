@@ -1,194 +1,222 @@
 // src/backend/bfs.go
-package main // Harus package main agar bisa diakses langsung oleh main.go dan data.go/graph.go
+package main
 
 import (
-	"container/list" // Menggunakan list sebagai queue (antrian)
-	"errors"        // Untuk membuat error baru
+	"container/list"
+	"errors"
 	"fmt"
 )
 
-// --- Struktur Data Tambahan untuk BFS ---
-
-// bfsNode digunakan untuk menyimpan state dalam BFS, termasuk elemen dan resep pembuatnya
-// type bfsNode struct {
-// 	elementName string
-// 	recipeUsed  Recipe // Resep yang digunakan untuk MENCAPAI elemen ini
-// }
-// NOTE: Pendekatan yang lebih umum adalah menyimpan parent/recipe dalam map terpisah.
-
-// --- Fungsi BFS Utama ---
-
-// FindPathBFS mencari jalur resep terpendek dari elemen dasar ke targetElement menggunakan BFS.
-// Mengembalikan slice resep yang membentuk jalur, jumlah node yang dikunjungi, dan error jika tidak ditemukan.
+// FindPathBFS (fungsi ini tetap sama)
 func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 	fmt.Printf("Mencari jalur BFS ke: %s\n", targetElement)
-
-	// Akses graf yang sudah dibuat di graph.go
 	graph := GetAlchemyGraph()
 	if graph == nil {
 		return nil, 0, errors.New("graf alkimia belum diinisialisasi")
 	}
 
-	// 1. Inisialisasi struktur data BFS
-	queue := list.New()                            // Queue untuk elemen yang akan dikunjungi
-	visited := make(map[string]bool)               // Set untuk melacak elemen yang sudah ditemukan/dikunjungi
-	parent := make(map[string]Recipe)              // Map untuk merekonstruksi path (Key: Hasil, Value: Resep pembuatnya)
-	nodesVisitedCount := 0                         // Penghitung node yang dieksplorasi dari queue
+	queue := list.New()
+	visited := make(map[string]bool)
+	parent := make(map[string]Recipe) // Tipe map[string]Recipe
+	nodesVisitedCount := 0
 
-	baseElements := []string{"Air", "Earth", "Fire", "Water"} // Elemen dasar [cite: 6]
+	baseElements := []string{"Air", "Earth", "Fire", "Water"}
 
-	// 2. Mulai dari elemen dasar
 	for _, base := range baseElements {
-		if base == targetElement { // Target adalah elemen dasar
-			return []Recipe{}, 0, nil // Tidak perlu resep
+		if base == targetElement {
+			return []Recipe{}, 0, nil
 		}
-		// Hanya tambahkan jika elemen dasar ada di map graf (artinya pernah jadi bahan)
-		if _, exists := graph[base]; exists || len(GetRecipeMap()[base]) > 0 || base == "Air" || base == "Earth" || base == "Fire" || base == "Water" { // Pastikan base element ada di data kita
-			queue.PushBack(base)
-			visited[base] = true
-			// Elemen dasar tidak punya parent recipe
+		if _, exists := graph[base]; exists || isBaseElement(base) {
+			if !visited[base] {
+				queue.PushBack(base)
+				visited[base] = true
+			}
 		}
 	}
 
-	// 3. Loop BFS selama queue tidak kosong
 	for queue.Len() > 0 {
-		// Dequeue elemen pertama
 		queueElement := queue.Front()
 		currentElement := queueElement.Value.(string)
 		queue.Remove(queueElement)
-		nodesVisitedCount++ // Hitung node yang diproses dari queue
+		nodesVisitedCount++
 
-		// Debug: Cetak elemen yg sedang diproses
-		// fmt.Printf("  BFS: Memproses -> %s\n", currentElement)
-
-		// 4. Dapatkan semua resep yang melibatkan currentElement sebagai bahan
 		recipesInvolvingCurrent := graph[currentElement]
 
-		// 5. Iterasi melalui resep-resep tersebut
 		for _, recipe := range recipesInvolvingCurrent {
 			var otherIngredient string
-			// Tentukan bahan lainnya
 			if recipe.Ingredient1 == currentElement {
 				otherIngredient = recipe.Ingredient2
 			} else {
 				otherIngredient = recipe.Ingredient1
 			}
 
-			// 6. Cek apakah bahan lainnya sudah ditemukan (visited)
 			if visited[otherIngredient] {
-				// Jika ya, kita bisa membuat recipe.Result
 				result := recipe.Result
-
-				// 7. Cek apakah hasil ini belum pernah ditemukan sebelumnya
 				if !visited[result] {
-					// Debug: Cetak elemen baru yg ditemukan
-					// fmt.Printf("    BFS: Menemukan -> %s (dari %s + %s)\n", result, recipe.Ingredient1, recipe.Ingredient2)
+					visited[result] = true
+					parent[result] = recipe // Simpan resep pertama
+					queue.PushBack(result)
 
-					visited[result] = true       // Tandai hasil sudah ditemukan
-					parent[result] = recipe      // Simpan resep yang digunakan untuk membuatnya
-					queue.PushBack(result)       // Masukkan hasil ke queue untuk diproses
-
-					// 8. Cek apakah hasil ini adalah target kita
 					if result == targetElement {
 						fmt.Printf("BFS: Target '%s' ditemukan!\n", targetElement)
-						// Rekonstruksi path dari parent map
-						path := reconstructPath(parent, targetElement)
-						return path, nodesVisitedCount, nil // Sukses!
+						path := reconstructPathRevised(parent, targetElement) // Gunakan map[string]Recipe
+						return path, nodesVisitedCount, nil
 					}
 				}
 			}
-		} // Akhir loop resep
-	} // Akhir loop queue
+		}
+	}
 
-	// 9. Jika queue kosong dan target tidak ditemukan
-	fmt.Printf("BFS: Target '%s' tidak dapat ditemukan dari elemen dasar.\n", targetElement)
+	fmt.Printf("BFS: Target '%s' tidak dapat ditemukan.\n", targetElement)
 	return nil, nodesVisitedCount, fmt.Errorf("jalur ke elemen '%s' tidak ditemukan", targetElement)
 }
 
-// --- Fungsi Helper untuk Rekonstruksi Path ---
 
-// reconstructPath membuat ulang urutan resep dari map parent.
-func reconstructPath(parent map[string]Recipe, target string) []Recipe {
-	path := []Recipe{}
-	current := target
+// FindMultiplePathsBFS (dengan perbaikan tipe parent)
+func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int, error) {
+	fmt.Printf("Mencari %d jalur BFS ke: %s\n", maxRecipes, targetElement)
 
-	// Telusuri balik dari target menggunakan resep parent
-	for {
-		recipe, exists := parent[current]
-		if !exists {
-			// Kita sudah mencapai elemen yang tidak punya parent recipe (seharusnya elemen dasar)
-			break
+	graph := GetAlchemyGraph()
+	if graph == nil {
+		return nil, 0, errors.New("graf alkimia belum diinisialisasi")
+	}
+    if maxRecipes <= 0 {
+        return nil, 0, errors.New("jumlah resep minimal harus 1")
+    }
+
+
+	queue := list.New()
+	visited := make(map[string]bool)
+	// --- PERUBAHAN TIPE PARENT DI SINI ---
+	parent := make(map[string]Recipe) // Kembali ke map[string]Recipe
+	// ------------------------------------
+	nodesVisitedCount := 0
+
+	allFoundPaths := [][]Recipe{}
+	foundCount := 0
+    foundAtLevel := -1 // Level pertama kali target ditemukan
+
+	baseElements := []string{"Air", "Earth", "Fire", "Water"}
+
+	for _, base := range baseElements {
+		if base == targetElement {
+			return [][]Recipe{}, 0, nil
 		}
-		// Masukkan resep ke awal slice (agar urutannya benar dari dasar ke target)
-		path = append([]Recipe{recipe}, path...)
-
-		// Mundur ke salah satu bahan dari resep ini.
-		// Kita perlu tahu bahan mana yang "lebih dulu" ditemukan atau mana yang bukan elemen dasar
-		// Untuk simplifikasi, kita bisa mundur ke bahan1 ATAU bahan2 jika salah satunya bukan elemen dasar
-		// dan punya parent. Atau telusuri keduanya?
-		// Untuk path terpendek BFS, cukup telusuri balik saja. Bahan tidak perlu ditelusuri ulang
-		// karena parent map sudah menjamin ketercapaian. Kita hanya perlu resepnya.
-
-		// Tentukan elemen mana yang akan ditelusuri selanjutnya.
-		// Prioritaskan elemen yang BUKAN elemen dasar dan punya parent lagi.
-		// Cek apakah Ing1 punya parent (bukan elemen dasar yg dibuat dari null)
-		_, parent1Exists := parent[recipe.Ingredient1]
-		// Cek apakah Ing2 punya parent
-		_, parent2Exists := parent[recipe.Ingredient2]
-
-		// Pindah ke elemen parent selanjutnya. Logika ini mungkin perlu disempurnakan
-		// tergantung bagaimana ingin menampilkan pohon dependensi lengkap.
-		// Untuk sekedar daftar resep, kita hanya perlu mundur dari result saat ini.
-		// Logika sederhananya: elemen 'current' dibuat oleh 'recipe'. Selesai. Iterasi berikutnya
-		// akan dimulai dari elemen 'current' yang baru (yaitu bahan dari resep sebelumnya).
-		// Tapi karena kita hanya menyimpan Result->Recipe, kita perlu cari tahu mana
-		// dari Ing1 atau Ing2 yang membawa kita ke 'current' ini.
-		// Pendekatan paling mudah: cukup berhenti setelah memasukkan resep pertama.
-		// Koreksi: Kita perlu mundur terus sampai elemen dasar. Map parent[Result]=Recipe sudah cukup.
-		// Kita hanya perlu memilih salah satu parent untuk mundur jika diperlukan, tapi
-		// untuk daftar resep, kita telusuri balik Resultnya.
-		current = recipe.Result // Ini salah, harusnya mundur ke bahan
-
-		// Mundur ke salah satu bahan untuk melanjutkan iterasi path reconstruction
-		// Kita harus tahu mana dari bahan1 atau bahan2 yang merupakan "anak" dari
-		// langkah sebelumnya dalam konteks parent map ini.
-		// Atau cara paling mudah: telusuri saja terus dari `current` yang baru.
-		next_current_found := false
-		if parent1Exists { // Jika bahan1 punya parent (bukan base)
-			current = recipe.Ingredient1
-			next_current_found = true
-		} else if parent2Exists { // Jika bahan2 punya parent
-			current = recipe.Ingredient2
-			next_current_found = true
-		} else {
-			// Jika kedua bahan tidak punya parent di map, berarti mereka base element atau
-			// salah satunya base element, kita berhenti di sini.
-			break
-		}
-
-		// Jika elemen 'current' yang baru adalah salah satu base element, kita berhenti.
-		isBase := false
-		baseElements := []string{"Air", "Earth", "Fire", "Water"}
-		for _, base := range baseElements {
-			if current == base {
-				isBase = true
-				break
+		if _, exists := graph[base]; exists || isBaseElement(base) {
+			if !visited[base] {
+				queue.PushBack(base)
+				visited[base] = true
 			}
 		}
-		if isBase && !next_current_found { // Jika kita memilih mundur ke base element (karena satunya lagi juga base/tak ada parent)
-			break
+	}
+
+	level := 0
+	elementsInCurrentLevel := queue.Len()
+	elementsInNextLevel := 0
+
+	for queue.Len() > 0 {
+		// Jika sudah menemukan cukup path DAN sudah melewati level penemuan pertama, berhenti
+        if foundCount >= maxRecipes && level > foundAtLevel && foundAtLevel != -1 {
+             fmt.Println("BFS Multiple: Batas resep tercapai dan level terpendek sudah selesai.")
+             break
+        }
+
+		queueElement := queue.Front()
+		currentElement := queueElement.Value.(string)
+		queue.Remove(queueElement)
+		nodesVisitedCount++
+		elementsInCurrentLevel--
+
+		recipesInvolvingCurrent := graph[currentElement]
+
+		for _, recipe := range recipesInvolvingCurrent {
+			var otherIngredient string
+			if recipe.Ingredient1 == currentElement {
+				otherIngredient = recipe.Ingredient2
+			} else {
+				otherIngredient = recipe.Ingredient1
+			}
+
+			// Cek apakah bahan lainnya sudah pernah dikunjungi (di level ini atau sebelumnya)
+			if visited[otherIngredient] {
+				result := recipe.Result
+
+                // Jika hasil belum pernah dikunjungi SAMA SEKALI, baru enqueue dan set parent
+				if !visited[result] {
+					visited[result] = true
+					// --- PERUBAHAN PENGISIAN PARENT ---
+					parent[result] = recipe // Simpan resep PERTAMA yang menemukannya
+                    // ---------------------------------
+					queue.PushBack(result)
+					elementsInNextLevel++
+				}
+
+				// Cek apakah hasil adalah target, meskipun sudah pernah divisit
+				// (karena bisa jadi ada jalur lain di level yang sama)
+				if result == targetElement {
+                    // Hanya proses jika kita masih mencari ATAU ini adalah level pertama penemuan
+                    if foundCount < maxRecipes && (foundAtLevel == -1 || level == foundAtLevel) {
+                        if foundAtLevel == -1 {
+                             foundAtLevel = level // Catat level pertama kali ditemukan
+                        }
+
+                        // Rekonstruksi path menggunakan resep INI sebagai langkah terakhir
+                        // Kita perlu cara untuk memasukkan resep ini ke map parent *sementara*
+                        // agar reconstructPathRevised bekerja untuk jalur ini.
+                        // Atau, modifikasi reconstruct agar menerima resep terakhir.
+
+                        // Pendekatan Sementara: Buat salinan map parent dan tambahkan/update resep terakhir
+                        tempParent := make(map[string]Recipe)
+                        for k, v := range parent {
+                            tempParent[k] = v
+                        }
+                        tempParent[targetElement] = recipe // Pastikan resep terakhir ini yang dipakai
+
+                        currentPath := reconstructPathRevised(tempParent, targetElement) // Gunakan tempParent
+
+                        // TODO: Cek apakah path ini unik jika diperlukan
+                        if len(currentPath) > 0 {
+                            allFoundPaths = append(allFoundPaths, currentPath)
+                            foundCount++
+                            fmt.Printf("BFS Multiple: Path ke-%d ditemukan (target: %s, level: %d)\n", foundCount, targetElement, level)
+                            if foundCount >= maxRecipes {
+                                // Jangan langsung break loop resep, biarkan cek resep lain di level yg sama
+                            }
+                        }
+                    }
+				}
+			}
+		} // End loop resep
+
+		// Pindah level
+		if elementsInCurrentLevel == 0 {
+			level++
+			elementsInCurrentLevel = elementsInNextLevel
+			elementsInNextLevel = 0
+            // Jika sudah melewati level penemuan pertama, dan sudah cukup, break loop utama
+            if foundAtLevel != -1 && level > foundAtLevel && foundCount >= maxRecipes {
+                 fmt.Println("BFS Multiple: Selesai memproses level terpendek.")
+                 break
+            }
 		}
 
+	} // End loop queue
+
+	if foundCount == 0 {
+		fmt.Printf("BFS Multiple: Target '%s' tidak dapat ditemukan.\n", targetElement)
+		return nil, nodesVisitedCount, fmt.Errorf("jalur ke elemen '%s' tidak ditemukan", targetElement)
 	}
-	return path
+
+	return allFoundPaths, nodesVisitedCount, nil
 }
 
-// --- REVISI reconstructPath (Lebih Sederhana & Benar) ---
+
+// reconstructPathRevised (fungsi ini tetap sama, mengharapkan map[string]Recipe)
 func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe {
-    path := list.New() // Gunakan list agar mudah insert di depan
+    path := list.New()
     queue := list.New()
     queue.PushBack(target)
-    processedForPath := make(map[string]bool) // Hindari duplikasi elemen dalam path reconstruction
+    processedForPath := make(map[string]bool)
 	processedForPath[target]=true
 
     for queue.Len() > 0 {
@@ -198,14 +226,11 @@ func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe {
 
         recipe, exists := parent[current]
         if !exists {
-            // Mencapai elemen dasar atau elemen tanpa parent (awal)
             continue
         }
 
-        // Tambahkan resep ini ke depan path
         path.PushFront(recipe)
 
-        // Tambahkan kedua bahan ke queue jika belum diproses untuk path
         if _, processed := processedForPath[recipe.Ingredient1]; !processed {
              if _, parentExists := parent[recipe.Ingredient1]; parentExists || isBaseElement(recipe.Ingredient1) {
                 queue.PushBack(recipe.Ingredient1)
@@ -220,7 +245,6 @@ func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe {
         }
     }
 
-    // Konversi list ke slice
     finalPath := make([]Recipe, 0, path.Len())
     for e := path.Front(); e != nil; e = e.Next() {
         finalPath = append(finalPath, e.Value.(Recipe))
@@ -228,6 +252,7 @@ func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe {
     return finalPath
 }
 
+// isBaseElement (fungsi ini tetap sama)
 func isBaseElement(name string) bool {
 	baseElements := []string{"Air", "Earth", "Fire", "Water"}
 	for _, base := range baseElements {
