@@ -43,7 +43,8 @@ function SearchForm({ onSearchSubmit, isLoading }) {
 
   return (
     // Styling dasar agar lebih rapi (bisa dipindah ke CSS)
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '400px', margin: '20px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', background: '#f9f9f9' }}>
+    // Hapus maxWidth dan sesuaikan margin agar form mengambil lebar penuh
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '1200px', margin: '20px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', background: '#f9f9f9', boxSizing: 'border-box' }}> {/* Hapus maxWidth, set width 100%, tambahkan boxSizing */}
       <div>
         <label htmlFor="targetElement" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#343a40' /* Warna label utama */ }}>Elemen Target:</label>
         <input

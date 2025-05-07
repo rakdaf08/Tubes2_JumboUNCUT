@@ -20,6 +20,7 @@ func main() {
 
 	// --- Setup Rute API ---
 	http.HandleFunc("/api/search", searchHandler) // Daftarkan handler dari handlers.go
+	http.HandleFunc("/api/image", imageHandler)
 	// Tambahkan handler lain jika ada nanti
 
 	// --- Jalankan Server ---

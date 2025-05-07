@@ -45,13 +45,17 @@ function SearchPage() {
 
 
   return (
-    // Tambahkan sedikit padding ke container utama
-    <div style={{ padding: '20px' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Pencari Resep Little Alchemy 2</h1>
-      {/* Kirim fungsi handleSearch ke SearchForm */}
-      <SearchForm onSearchSubmit={handleSearch} isLoading={isLoading} />
+    // Terapkan gaya untuk membuat kontainer ini full width dan tambahkan padding horizontal
+    <div style={{ width: '100%', margin: '0 auto', padding: '0 20px', boxSizing: 'border-box' }}> {/* Set width 100%, hapus margin auto vertikal, tambahkan padding horizontal */}
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Pencari Resep Little Alchemy 2</h1> {/* Hapus padding horizontal dari judul */}
+      {/* Hapus div pembungkus form karena padding horizontal sudah di container utama */}
+      {/* <div style={{ padding: '0 20px' }}> */}
+         <SearchForm onSearchSubmit={handleSearch} isLoading={isLoading} />
+      {/* </div> */}
+
 
       {/* Komponen SearchResults akan menampilkan hasil, loading, atau error */}
+      {/* SearchResults sudah diberi width: '100%' dan margin: 'auto' */}
       <SearchResults results={searchResults} isLoading={isLoading} error={error} />
     </div>
   );
