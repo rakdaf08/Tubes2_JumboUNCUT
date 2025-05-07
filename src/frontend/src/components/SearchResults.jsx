@@ -15,7 +15,7 @@ const isBaseElement = (name) => {
 // --- Fungsi Rekursif untuk Membangun Simpul Elemen (dengan Logging Debug Depth) ---
 const buildElementNode = (elementName, pathRecipesMap, imageURLs, depth = 0) => {
      // Logging untuk debugging kedalaman rekursi
-     console.log(`[buildElementNode] Processing: ${elementName}, Depth: ${depth}`);
+     // console.log(`[buildElementNode] Processing: ${elementName}, Depth: ${depth}`); // Debugging log di-komen
 
      // Kondisi berhenti darurat sementara untuk debugging jika rekursi terlalu dalam
      // Ini MENCEGAH crash browser karena stack overflow, bukan solusi permanen
@@ -56,7 +56,7 @@ const buildElementNode = (elementName, pathRecipesMap, imageURLs, depth = 0) => 
 // --- Fungsi Rekursif untuk Membangun Simpul Resep (dengan Logging Debug Depth) ---
 const buildRecipeNode = (recipe, pathRecipesMap, imageURLs, depth = 0) => {
   // Logging untuk debugging kedalaman rekursi
-  console.log(`[buildRecipeNode] Processing Recipe: ${recipe.ingredient1} + ${recipe.ingredient2} => ${recipe.result}, Depth: ${depth}`);
+  // console.log(`[buildRecipeNode] Processing Recipe: ${recipe.ingredient1} + ${recipe.ingredient2} => ${recipe.result}, Depth: ${depth}`); // Debugging log di-komen
 
    // Kondisi berhenti darurat sementara untuk debugging jika rekursi terlalu dalam
    if (depth > 500) { // Angka 500 bisa disesuaikan
@@ -138,6 +138,12 @@ const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
     ? `${API_BASE_URL}/api/image?elementName=${encodeURIComponent(elementNameToFetch)}`
     : ''; // URL kosong jika nama elemen tidak valid atau simpul resep
 
+    // --- Ukuran Gambar dan Offset Teks ---
+    const imageSize = 50; // Ukuran gambar (lebar dan tinggi)
+    const textYOffset = imageSize / 2 + 10; // Posisi Y teks di bawah gambar (sesuaikan 10 untuk jarak)
+    const textXOffset = 0; // Posisi X teks (0 untuk tengah)
+
+
     return (
       // Group ini bisa diklik untuk toggle collapse/expand
       <g onClick={toggleNode}>
@@ -145,17 +151,17 @@ const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
         {/* Tampilan untuk Simpul Elemen (bukan resep) */}
         {!isRecipeNode && (
             <>
-                 {/* Lingkaran sebagai latar belakang simpul elemen */}
-                <circle r={20} fill="#4682B4" stroke="#000" strokeWidth="1.5" />
+                 {/* Hapus elemen <circle> yang menggambar lingkaran biru */}
+                 {/* <circle r={20} fill="#4682B4" stroke="#000" strokeWidth="1.5" /> */}
 
                  {/* Gambar Elemen (jika ada URL gambar proxy) */}
                  {/* Hanya tampilkan jika imageUrlFromBackendProxy tidak kosong */}
                 {imageUrlFromBackendProxy && (
                    <image
-                      x={-15} // Sesuaikan posisi X agar gambar di tengah/kiri lingkaran
-                      y={-35} // Sesuaikan posisi Y agar gambar di atas lingkaran
-                      width={30} // Ukuran lebar gambar
-                      height={30} // Ukuran tinggi gambar
+                      x={-imageSize / 2} // Posisikan X agar gambar di tengah simpul
+                      y={-imageSize / 2} // Posisikan Y agar gambar di tengah simpul
+                      width={imageSize} // Ukuran lebar gambar
+                      height={imageSize} // Ukuran tinggi gambar
                       href={imageUrlFromBackendProxy} // Gunakan URL dari backend proxy
                       onError={(e) => {
                            console.warn(`Failed to load image for ${nodeDatum.name} from proxy: ${e.target.href}`);
@@ -166,21 +172,18 @@ const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
                    />
                 )}
 
-                {/* Teks Nama Elemen */}
+                {/* Teks Nama Elemen - Posisikan di bawah gambar */}
                 <text
                   strokeWidth="0.5"
-                  x={0}
-                  y={10}
-                  textAnchor="middle"
+                  x={textXOffset} // Posisikan di tengah secara horizontal
+                  y={textYOffset} // Posisikan di bawah gambar
+                  textAnchor="middle" // Pusatkan teks secara horizontal
                   alignmentBaseline="middle"
                   style={{
-                       // Ukuran font
-                       fontSize: '14px',
-                       // Warna teks (putih agar terlihat di lingkaran biru)
-                       fill: '#fff',
+                       fontSize: '14px', // Ukuran font
+                       fill: '#212529', // Warna teks gelap
                        fontWeight: 'bold',
-                       // Agar klik pada teks tetap mengaktifkan toggleNode pada group <g>
-                       pointerEvents: 'none',
+                       pointerEvents: 'none', // Agar klik pada teks tetap mengaktifkan toggleNode pada group <g>
                   }}
                 >
                   {nodeDatum.name}
@@ -188,14 +191,14 @@ const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
 
                  {/* Opsional: Tampilkan Depth untuk debugging */}
                  {/*
-                 <text x="0" y="30" textAnchor="middle" fontSize="10" fill="black">
+                 <text x="0" y={textYOffset + 15} textAnchor="middle" fontSize="10" fill="black">
                      Depth: {nodeDatum.attributes?.depth ?? 'N/A'}
                  </text>
                  */}
             </>
         )}
 
-        {/* Tampilan untuk Simpul Resep */}
+        {/* Tampilan untuk Simpul Resep (tetap sama) */}
         {isRecipeNode && (
              <>
                  {/* Kotak sebagai latar belakang simpul resep */}
@@ -288,30 +291,17 @@ function SearchResults({ results, isLoading, error }) {
         // Menggabungkan 'invalid-step', pathIndex, dan stepIndex
         return <li key={`invalid-step-${pathIndex}-${stepIndex}`} style={{color: 'red'}}>Data langkah tidak valid</li>;
     }
-    // --- PERBAIKAN KEY ---
-    // Key untuk elemen <li> dalam daftar harus unik di dalam list <ol> yang sama.
-    // Menggunakan gabungan pathIndex dan stepIndex memastikan keunikan
-    // bahkan ketika merender multiple list <ol> di mode multiple.
-    // Pastikan pathIndex !== null saat mode multiple.
-    // SINTAKS template literal untuk key HARUS: `${pathIndex}-${stepIndex}`
-    const key = `${pathIndex}-${stepIndex}`; // <--- PASTIKAN BARIS INI BENAR
-    // --- AKHIR PERBAIKAN KEY ---
-
+    const key = `${pathIndex !== null ? pathIndex + '-' : ''}${stepIndex}`; // Perbaiki key unik
 
     // Ambil path URL gambar dari results.imageURLs
     const imageUrlPath1 = results.imageURLs?.[step.ingredient1];
     const imageUrlPath2 = results.imageURLs?.[step.ingredient2];
     const imageUrlPathResult = results.imageURLs?.[step.result];
 
-    // --- PERBAIKAN URL GAMBAR ---
-    // Gunakan template literal (backticks `` ` ``) murni untuk interpolasi URL.
-    // Format yang benar: `teks biasa ${variabel} teks lain ${variabel lain}`
-    // URL ini akan mengarah ke endpoint backend proxy gambar
-    // PASTIKAN SINTAKS TEMPLATE LITERAL DI BAWAH BENAR. Tidak ada <span>, \, dll.
-    const imageUrl1 = imageUrlPath1 ? `${API_BASE_URL}${imageUrlPath1}` : ''; // <--- PASTIKAN BARIS INI BENAR
-    const imageUrl2 = imageUrlPath2 ? `${API_BASE_URL}${imageUrlPath2}` : ''; // <--- PASTIKAN BARIS INI BENAR
-    const imageUrlResult = imageUrlPathResult ? `${API_BASE_URL}${imageUrlPathResult}` : ''; // <--- PASTIKAN BARIS INI BENAR
-    // --- AKHIR PERBAIKAN URL GAMBAR ---
+    // Bentuk URL lengkap ke backend proxy
+    const imageUrl1 = imageUrlPath1 ? `${API_BASE_URL}${imageUrlPath1}` : '';
+    const imageUrl2 = imageUrlPath2 ? `${API_BASE_URL}${imageUrlPath2}` : '';
+    const imageUrlResult = imageUrlPathResult ? `${API_BASE_URL}${imageUrlPathResult}` : '';
 
 
     const imgStyle = {
@@ -326,18 +316,14 @@ function SearchResults({ results, isLoading, error }) {
     return (
       // Gunakan key yang sudah diperbaiki
       <li key={key} style={{ marginBottom: '8px', lineHeight: '1.5', color: '#212529' }}>
-        {/* Gunakan URL LENGKAP pada atribut src, pastikan sintaks template literal benar */}
-        {/* Tag img hanya dirender jika imageUrl1 tidak kosong */}
-        {/* onError={handleImageError} akan dipanggil jika gambar gagal dimuat */}
+        {/* Gunakan URL LENGKAP pada atribut src */}
         {imageUrl1 ? <img src={imageUrl1} alt={step.ingredient1 || 'ingredient1'} style={imgStyle} onError={handleImageError}/> : null}
         {step.ingredient1 || '?'}
         <span style={{ margin: '0 5px' }}>+</span>
-         {/* Tag img hanya dirender jika imageUrl2 tidak kosong */}
-        {imageUrl2 ? <img src={imageUrl2} alt={step.ingredient2 || 'ingredient2'} style={imgStyle} onError={handleImageError}/> : null}
+         {imageUrl2 ? <img src={imageUrl2} alt={step.ingredient2 || 'ingredient2'} style={imgStyle} onError={handleImageError}/> : null}
         {step.ingredient2 || '?'}
         <span style={{ margin: '0 5px' }}>{' => '}</span>
-         {/* Tag img hanya dirender jika imageUrlResult tidak kosong */}
-        {imageUrlResult ? <img src={imageUrlResult} alt={step.result || 'result'} style={imgStyle} onError={handleImageError}/> : null}
+         {imageUrlResult ? <img src={imageUrlResult} alt={step.result || 'result'} style={imgStyle} onError={handleImageError}/> : null}
         <strong style={{ color: '#000' }}>{step.result || '?'}</strong>
       </li>
     );
@@ -346,11 +332,6 @@ function SearchResults({ results, isLoading, error }) {
   // Helper function untuk merender satu jalur resep lengkap dalam teks (daftar ordered list)
   // Memperbaiki key untuk <ol>
   const renderPath = (path, pathIndex = null) => (
-    // --- PERBAIKAN KEY ---
-    // Key untuk <ol> harus unik jika ada multiple list <ol> (di mode multiple)
-    // pathIndex unik untuk setiap jalur di mode multiple.
-    // Gunakan pathIndex untuk keunikan, fallback ke key statis 'single-path-list' untuk kasus single path.
-    // SINTAKS template literal untuk key HARUS: `path-${pathIndex}` jika pathIndex tidak null
     Array.isArray(path) ? (
         <ol key={pathIndex !== null ? `path-${pathIndex}` : 'single-path-list'} style={{ paddingLeft: '20px', marginTop: '5px' }}>
           {/* Map setiap langkah resep dan render menggunakan renderStep */}
@@ -378,6 +359,7 @@ function SearchResults({ results, isLoading, error }) {
           } else if (results.mode === 'multiple' && results.paths && results.paths.length > 0) {
                // Untuk mode multiple, results.paths adalah array of paths.
                // Kita akan panggil buildTreeData untuk setiap *path* individu dan mengumpulkan rootnya
+               // treeDataForRendering akan menjadi array of root nodes
                treeDataForRendering = results.paths.map(path => buildTreeData(path, results.searchTarget, results.imageURLs)[0]); // Ambil root node dari hasil buildTreeData
           }
       } else {
@@ -409,35 +391,10 @@ function SearchResults({ results, isLoading, error }) {
       )}
 
 
-       {/* AREA UNTUK MENAMPILKAN HASIL TEKS */}
-       {results.pathFound === true ? ( // Tampilkan area teks jika pathFound true
+       {/* AREA UNTUK MENAMPILKAN HASIL (Teks dan Visualisasi Berselang-seling) */}
+       {results.pathFound === true ? ( // Tampilkan area hasil jika pathFound true
            <>
-           {/* Tampilan teks untuk mode shortest */}
-           {results.mode === 'shortest' && results.path && results.path.length > 0 && (
-                <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '5px', border: '1px solid #dee2e6', marginBottom: '20px' }}>
-                   <h3 style={{ marginTop: '0', marginBottom: '10px', color: '#495057' }}>Jalur Resep Terpendek (Teks):</h3>
-                   <p style={{ marginBottom: '10px', fontSize: '0.9em', color: '#6c757d' }}>Jumlah Langkah: {results.path.length}</p>
-                   {renderPath(results.path)} {/* Panggil renderPath untuk list teks */}
-               </div>
-           )}
-
-           {/* Tampilan teks untuk mode multiple */}
-           {results.mode === 'multiple' && results.paths && results.paths.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                 <h3 style={{ marginBottom: '15px', color: '#495057' }}>Jalur Resep Ditemukan (Teks):</h3>
-                 {/* Loop setiap jalur dan tampilkan dalam bentuk daftar teks */}
-                 {results.paths.map((path, index) => (
-                     <div key={`text-path-${index}`} style={{ marginBottom: '15px', border: '1px solid #eee', borderRadius: '5px', padding: '15px' }}>
-                         <h4 style={{ marginTop: '0', marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px', color: '#495057' }}>
-                           Jalur {index + 1} (Langkah: {path.length})
-                         </h4>
-                         {renderPath(path, index)} {/* Panggil renderPath untuk list teks */}
-                     </div>
-                 ))}
-              </div>
-           )}
-
-           {/* Pesan jika target adalah elemen dasar dan pathFound true (untuk tampilan teks) */}
+           {/* Kasus: Target adalah elemen dasar (hanya tampilkan pesan teks dan visualisasi 1 node jika pathFound) */}
            {results.pathFound === true && isBaseElement(results.searchTarget) && (
                 // Cek juga jika path/paths benar-benar kosong, karena elemen dasar pathnya 0
                ((results.mode === 'shortest' && (!results.path || results.path.length === 0)) ||
@@ -447,89 +404,91 @@ function SearchResults({ results, isLoading, error }) {
                      (Target adalah elemen dasar, tidak ada resep pembuat.)
                 </div>
            )}
+
+           {/* Kasus: Jalur resep ditemukan (tampilkan teks dan visualisasi berselang-seling) */}
+           {/* Loop melalui jalur yang ditemukan (untuk shortest hanya 1 jalur di results.path) */}
+           {/* Buat array dari jalur untuk di-map, baik itu single path atau multiple paths */}
+           {
+               (results.mode === 'shortest' && results.path && results.path.length > 0) ?
+               // Mode shortest: buat array berisi satu jalur
+               [results.path].map((path, index) => (
+                   <div key={`path-block-${index}`} style={{ marginBottom: '30px', border: '1px solid #dee2e6', borderRadius: '8px', overflow: 'hidden', background: '#f8f9fa' }}>
+                       {/* Tampilan Teks untuk Jalur ini */}
+                       <div style={{ padding: '15px' }}>
+                           <h4 style={{ marginTop: '0', marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px', color: '#495057' }}>
+                             Jalur {index + 1} (Langkah: {path.length})
+                           </h4>
+                           {renderPath(path, index)}
+                       </div>
+
+                       {/* Tampilan Visualisasi Graf untuk Jalur ini */}
+                       {/* Pastikan data pohon untuk jalur ini ada */}
+                       {treeDataForRendering.length > index && treeDataForRendering[index] && (
+                           <div style={{ background: '#e9ecef', padding: '15px' }}> {/* Ubah background menjadi abu-abu */}
+                                <h4 style={{ marginTop: '0', marginBottom: '10px', color: '#495057' }}>Visualisasi Jalur {index + 1}:</h4>
+                                {/* KONTainer DENGAN UKURAN TETAP untuk komponen Tree. SANGAT PENTING! */}
+                                <div id={`treeWrapper-${index}`} style={{ width: '100%', height: '500px', border: '1px solid #ccc', overflow: 'auto' }}> {/* Gunakan overflow: auto */}
+                                    <Tree
+                                        data={[treeDataForRendering[index]]} // Kirim data pohon untuk jalur ini (array of 1 root)
+                                        orientation="vertical"
+                                        translate={{ x: 250, y: 50 }} // Sesuaikan
+                                        renderCustomNodeElement={renderNodeWithImage}
+                                        zoomable={true}
+                                        draggable={true}
+                                        nodeSize={{ x: 120, y: 100 }} // Mengurangi jarak
+                                        separation={{ siblings: 1, nonSiblings: 1 }} // Mengurangi jarak
+                                    />
+                                </div>
+                           </div>
+                       )}
+                   </div>
+               ))
+               :
+               // Mode multiple: map melalui array results.paths
+               (results.mode === 'multiple' && results.paths && results.paths.length > 0) ?
+               results.paths.map((path, index) => (
+                   <div key={`path-block-${index}`} style={{ marginBottom: '30px', border: '1px solid #dee2e6', borderRadius: '8px', overflow: 'hidden', background: '#f8f9fa' }}>
+                       {/* Tampilan Teks untuk Jalur ini */}
+                       <div style={{ padding: '15px' }}>
+                           <h4 style={{ marginTop: '0', marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px', color: '#495057' }}>
+                             Jalur {index + 1} (Langkah: {path.length})
+                           </h4>
+                           {renderPath(path, index)}
+                       </div>
+
+                       {/* Tampilan Visualisasi Graf untuk Jalur ini */}
+                       {/* Pastikan data pohon untuk jalur ini ada */}
+                       {treeDataForRendering.length > index && treeDataForRendering[index] && (
+                           <div style={{ background: '#e9ecef', padding: '15px' }}> {/* Ubah background menjadi abu-abu */}
+                                <h4 style={{ marginTop: '0', marginBottom: '10px', color: '#495057' }}>Visualisasi Jalur {index + 1}:</h4>
+                                {/* KONTainer DENGAN UKURAN TETAP untuk komponen Tree. SANGAT PENTING! */}
+                                <div id={`treeWrapper-${index}`} style={{ width: '100%', height: '500px', border: '1px solid #ccc', overflow: 'auto' }}> {/* Gunakan overflow: auto */}
+                                     <Tree
+                                         data={[treeDataForRendering[index]]} // Kirim data pohon untuk jalur ini (array of 1 root)
+                                         orientation="vertical"
+                                         translate={{ x: 250, y: 50 }} // Sesuaikan
+                                         renderCustomNodeElement={renderNodeWithImage}
+                                         zoomable={true}
+                                         draggable={true}
+                                         nodeSize={{ x: 120, y: 100 }} // Mengurangi jarak
+                                         separation={{ siblings: 1, nonSiblings: 1 }} // Mengurangi jarak
+                                     />
+                                 </div>
+                           </div>
+                       )}
+                   </div>
+               ))
+               :
+               // Kasus lain: pathFound true tapi path/paths kosong (tidak seharusnya terjadi jika target bukan elemen dasar)
+               // Atau jika target adalah elemen dasar dan pathFound true (sudah ditangani di atas)
+               null // Tidak render apa-apa jika tidak ada jalur resep yang ditemukan
+           }
            </>
        ) : ( // Tampilkan pesan jika pathFound false (untuk kedua mode)
             <div style={{ color: '#856404', border: '1px solid #ffeeba', background: '#fff3cd', padding: '15px', borderRadius: '5px', marginTop: '20px' }}>
                  Jalur tidak ditemukan untuk elemen "{results.searchTarget || 'N/A'}". {results.error ? `(${results.error})` : ''}
             </div>
        )}
-
-
-      {/* AREA UNTUK MENAMPILKAN VISUALISASI POHON */}
-       {results.pathFound === true && treeDataForRendering.length > 0 && ( // Tampilkan area visualisasi jika pathFound true dan ada data pohon
-          <>
-              <h3 style={{ marginBottom: '15px', color: '#495057' }}>Visualisasi Pohon Resep:</h3>
-
-             {/* Jika mode adalah 'shortest' */}
-             {results.mode === 'shortest' && ( // Cek mode lagi untuk render Tree
-                 <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '5px', border: '1px solid #dee2e6' }}>
-                    <h4 style={{ marginTop: '0', marginBottom: '10px', color: '#495057' }}>Jalur Terpendek:</h4>
-                     {/* KONTainer DENGAN UKURAN TETAP untuk komponen Tree. SANGAT PENTING! */}
-                    <div id="treeWrapper-shortest" style={{ width: '100%', height: '500px', border: '1px solid #ccc', overflow: 'auto' }}> {/* Gunakan overflow: auto */}
-                        {/* Komponen Tree yang akan menggambar pohon */}
-                        <Tree
-                            data={treeDataForRendering} // Data pohon mode shortest ([rootNode])
-                            orientation="vertical" // Arah gambar pohon: 'vertical' atau 'horizontal'
-                            translate={{ x: 250, y: 50 }} // Posisi awal simpul akar (root). SESUAIKAN.
-                            renderCustomNodeElement={renderNodeWithImage} // Gunakan fungsi custom node kita
-                            zoomable={true}
-                            draggable={true}
-                            // Props kustomisasi lain
-                        />
-                    </div>
-                 </div>
-              )}
-
-              {results.mode === 'multiple' && results.paths && results.paths.length > 0 && ( // Cek mode lagi untuk render Trees
-                 <div>
-                    {/* Loop untuk SETIAP jalur resep yang ditemukan */}
-                    {results.paths.map((path, index) => {
-                        // Untuk setiap jalur, panggil buildTreeData untuk data pohon *spesifik jalur ini*
-                        const singleTreeData = buildTreeData(path, results.searchTarget, results.imageURLs);
-                        // Pastikan data pohon tidak kosong untuk jalur ini
-                        if (singleTreeData.length === 0) return null; // Jangan render div dan Tree jika data kosong
-
-                        return (
-                             // Bungkus setiap visualisasi pohon dalam div tersendiri
-                             <div key={`tree-path-${index}`} style={{ marginBottom: '20px', border: '1px solid #dee2e6', borderRadius: '5px', padding: '15px', background: '#ffffff' }}>
-                                 <h4 style={{ marginTop: '0', marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '5px', color: '#495057' }}>
-                                   Jalur {index + 1}:
-                                 </h4>
-                                 {/* KONTainer DENGAN UKURAN TETAP untuk komponen Tree. Sangat PENTING! */}
-                                 <div id={`treeWrapper-multiple-${index}`} style={{ width: '100%', height: '500px', border: '1px solid #ccc', overflow: 'auto' }}> {/* Gunakan overflow: auto */}
-                                     <Tree
-                                         data={singleTreeData} // Data pohon untuk 1 jalur ([rootNode])
-                                         orientation="vertical"
-                                         translate={{ x: 250, y: 50 }} // Sesuaikan
-                                         renderCustomNodeElement={renderNodeWithImage} // Gunakan fungsi custom node kita
-                                         zoomable={true}
-                                         draggable={true}
-                                         // Props lain
-                                     />
-                                 </div>
-                             </div>
-                        );
-                    })}
-                 </div>
-              )}
-
-          </>
-       )}
-
-        {/* Tampilkan pesan jika pathFound true tapi tidak ada visualisasi POHON */}
-        {/* Kondisi ini mengecek apakah hasil ditemukan (pathFound=true) tetapi treeDataForRendering kosong */}
-        {results.pathFound === true && treeDataForRendering.length === 0 && (
-            isBaseElement(results.searchTarget) ?
-            // Pesan khusus untuk elemen dasar
-               <div style={{ color: '#6c757d', border: '1px solid #ced4da', background: '#e9ecef', padding: '15px', borderRadius: '5px', marginTop: '20px' }}>
-                    (Target adalah elemen dasar, tidak ada visualisasi pohon resep.)
-               </div>
-               :
-               // Pesan fallback jika pathFound true tapi treeDataForRendering kosong (bukan elemen dasar)
-               <div style={{ color: '#856404', border: '1px solid #ffeeba', background: '#fff3cd', padding: '15px', borderRadius: '5px', marginTop: '20px' }}>
-                   Jalur resep ditemukan, tetapi visualisasi pohon tidak tersedia atau jalur kosong. Mohon periksa data resep dari backend.
-               </div>
-           )}
 
 
       {/* AREA UNTUK MENAMPILKAN URL GAMBAR */}
@@ -545,7 +504,7 @@ function SearchResults({ results, isLoading, error }) {
                          <img
                            src={`${API_BASE_URL}${url}`} // <-- Gabungkan API_BASE_URL dengan path dari imageURLs
                            alt={name || '?'}
-                           style={{ height: '24px', width: '24px', verticalAlign: 'middle', marginRight: '8px', border: '1px solid #eee', objectFit: 'contain' }}
+                           style={{ height: '40px', width: '40px', verticalAlign: 'middle', marginRight: '8px', border: '1px solid #eee', objectFit: 'contain' }}
                            onError={(e) => { e.target.style.display = 'none'; }}
                          />
                     ) : null}
