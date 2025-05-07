@@ -8,30 +8,17 @@ import (
 	"os"
 	"path/filepath" // <- Tambahkan import ini
 	"strings"
+
 	// Hanya perlu goquery dan library standar ini
 	"github.com/PuerkitoBio/goquery"
 )
-
-// --- Struct Definitions ---
-
-// Struct untuk menyimpan satu resep kombinasi (hanya teks)
-type Recipe struct {
-	Result      string `json:"result"`
-	Ingredient1 string `json:"ingredient1"`
-	Ingredient2 string `json:"ingredient2"`
-}
-
-// Struct BARU untuk menyimpan pemetaan nama elemen ke URL gambar
-type ElementImage struct {
-	Name     string `json:"name"`     // Nama elemen
-	ImageURL string `json:"imageURL"` // URL Gambar (disimpan apa adanya)
-}
 
 // --- Konfigurasi ---
 
 // !!! GANTI URL INI DENGAN URL WEBSITE YANG ANDA SCRAPE !!!
 // Contoh: "https://hints.littlealchemy2.com/all"
 const targetURL = "https://little-alchemy.fandom.com/wiki/Elements_(Little_Alchemy_2)#Tier_15_elements"
+
 // Dihapus sesuai permintaan, tapi diperlukan jika ada URL relatif pada gambar/link lain
 // const baseURL = "URL_DASAR_WEBSITE_TARGET_ANDA"
 
@@ -53,9 +40,8 @@ func getValidImageURL(imgTag *goquery.Selection) (string, bool) {
 	return "", false // Tidak ditemukan URL gambar yang valid
 }
 
-
 // --- Fungsi Utama ---
-func main() {
+func RunScraping() error {
 	// Validasi URL Target
 	if targetURL == "URL_WEBSITE_TARGET_ANDA_DI_SINI" {
 		log.Fatal("Error: Anda belum mengganti placeholder targetURL di dalam kode!")
@@ -73,18 +59,24 @@ func main() {
 
 	// 1. HTTP GET Request
 	res, err := http.Get(targetURL)
-	if err != nil { log.Fatalf("Error GET request: %v", err) }
+	if err != nil {
+		log.Fatalf("Error GET request: %v", err)
+	}
 	defer res.Body.Close()
-	if res.StatusCode != 200 { log.Fatalf("Error status code: %d", res.StatusCode) }
+	if res.StatusCode != 200 {
+		log.Fatalf("Error status code: %d", res.StatusCode)
+	}
 
 	// 2. Load HTML
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil { log.Fatalf("Error membaca HTML: %v", err) }
+	if err != nil {
+		log.Fatalf("Error membaca HTML: %v", err)
+	}
 	fmt.Println("Berhasil memuat dokumen HTML.")
 
 	// 3. Proses Scraping
-	var allRecipes []Recipe               // Slice untuk data resep
-	var elementImages []ElementImage     // Slice BARU untuk data gambar
+	var allRecipes []Recipe                    // Slice untuk data resep
+	var elementImages []ElementImage           // Slice BARU untuk data gambar
 	processedElements := make(map[string]bool) // Set untuk melacak elemen yg gambarnya sudah diproses
 
 	// Selector Tabel Utama
@@ -94,13 +86,17 @@ func main() {
 	doc.Find(tableSelector).Each(func(index int, table *goquery.Selection) {
 		fmt.Printf("\nMemproses Tabel ke-%d\n", index+1)
 		table.Find("tbody tr").Each(func(i int, row *goquery.Selection) {
-			if row.Find("th").Length() > 0 { return } // Skip header
+			if row.Find("th").Length() > 0 {
+				return
+			} // Skip header
 
 			// --- Ekstrak Info Elemen Hasil (Kolom 1) ---
 			resultCell := row.Find("td:nth-child(1)")
 			resultNameLink := resultCell.Find("a") // !! VERIFIKASI !!
 			resultName := strings.TrimSpace(resultNameLink.Text())
-			if resultName == "" { return } // Skip baris tanpa nama
+			if resultName == "" {
+				return
+			} // Skip baris tanpa nama
 
 			fmt.Printf("  Memproses Elemen: %s\n", resultName)
 
@@ -162,13 +158,17 @@ func main() {
 
 					// Buat resep teks
 					fmt.Printf("    -> Resep ke-%d: %s + %s\n", j+1, bahan1, bahan2)
-					recipe := Recipe{ Result: resultName, Ingredient1: bahan1, Ingredient2: bahan2 }
+					recipe := Recipe{Result: resultName, Ingredient1: bahan1, Ingredient2: bahan2}
 					allRecipes = append(allRecipes, recipe)
 
 					// Cocokkan & Simpan URL Gambar Bahan jika belum diproses
 					var imgURL1, imgURL2 string
-					if len(ingredientImageURLs) >= 1 { imgURL1 = ingredientImageURLs[0] }
-					if len(ingredientImageURLs) == 2 { imgURL2 = ingredientImageURLs[1] }
+					if len(ingredientImageURLs) >= 1 {
+						imgURL1 = ingredientImageURLs[0]
+					}
+					if len(ingredientImageURLs) == 2 {
+						imgURL2 = ingredientImageURLs[1]
+					}
 
 					if _, processed := processedElements[bahan1]; !processed && imgURL1 != "" {
 						elementImages = append(elementImages, ElementImage{Name: bahan1, ImageURL: imgURL1})
@@ -196,10 +196,14 @@ func main() {
 	// 4. Marshal & Tulis JSON untuk Resep
 	if len(allRecipes) > 0 {
 		recipeData, err := json.MarshalIndent(allRecipes, "", "  ")
-		if err != nil { log.Fatalf("Error marshal JSON Resep: %v", err) }
+		if err != nil {
+			log.Fatalf("Error marshal JSON Resep: %v", err)
+		}
 		recipeFileName := filepath.Join(dataDir, "recipes_scraped.json") // Gunakan filepath.Join
 		err = os.WriteFile(recipeFileName, recipeData, 0644)
-		if err != nil { log.Fatalf("Error menulis JSON Resep ke file '%s': %v", recipeFileName, err) }
+		if err != nil {
+			log.Fatalf("Error menulis JSON Resep ke file '%s': %v", recipeFileName, err)
+		}
 		fmt.Printf("Sukses! Data resep tekstual telah disimpan ke %s\n", recipeFileName)
 	} else {
 		fmt.Println("Tidak ada resep tekstual yang di-scrape untuk disimpan.")
@@ -208,13 +212,18 @@ func main() {
 	// 5. Marshal & Tulis JSON untuk Gambar Elemen
 	if len(elementImages) > 0 {
 		imageData, err := json.MarshalIndent(elementImages, "", "  ")
-		if err != nil { log.Fatalf("Error marshal JSON Gambar: %v", err) }
+		if err != nil {
+			log.Fatalf("Error marshal JSON Gambar: %v", err)
+		}
 		imageFileName := filepath.Join(dataDir, "element_images_urls.json") // Gunakan filepath.Join
 		err = os.WriteFile(imageFileName, imageData, 0644)
-		if err != nil { log.Fatalf("Error menulis JSON Gambar ke file '%s': %v", imageFileName, err) }
+		if err != nil {
+			log.Fatalf("Error menulis JSON Gambar ke file '%s': %v", imageFileName, err)
+		}
 		fmt.Printf("Sukses! Data URL gambar elemen telah disimpan ke %s\n", imageFileName)
 	} else {
 		fmt.Println("Tidak ada data URL gambar elemen yang di-scrape untuk disimpan.")
 	}
 	// ------------------------------------------------------------
+	return nil
 }
