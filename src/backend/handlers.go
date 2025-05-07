@@ -4,11 +4,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	
 	// sync tidak perlu di sini
 )
 
@@ -25,6 +27,103 @@ type MultiSearchResponse struct {
 	NodesVisited   int                 `json:"nodesVisited"`
 	DurationMillis int64               `json:"durationMillis"`
 	Error          string              `json:"error,omitempty"`
+}
+
+func imageHandler(w http.ResponseWriter, r *http.Request) {
+    // Set CORS headers agar frontend bisa mengakses
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Mungkin tidak perlu Content-Type di sini
+
+    // Hanya izinkan metode GET
+    if r.Method != http.MethodGet {
+        http.Error(w, "Metode tidak diizinkan", http.StatusMethodNotAllowed)
+        return
+    }
+
+    // Ambil nama elemen dari query parameter 'elementName'
+    queryParams := r.URL.Query()
+    elementName := queryParams.Get("elementName")
+
+    if elementName == "" {
+        http.Error(w, "Parameter 'elementName' diperlukan", http.StatusBadRequest)
+        return
+    }
+
+    log.Printf("Menerima permintaan gambar untuk elemen: %s\n", elementName)
+
+    // Dapatkan map URL gambar dari data yang sudah dimuat
+    imageMap := GetImageMap() // Pastikan fungsi GetImageMap() tersedia dari data.go
+
+    // Cari URL gambar asli untuk elemen ini
+    originalImageURL, found := imageMap[elementName]
+    if !found || originalImageURL == "" {
+        log.Printf("URL gambar tidak ditemukan untuk elemen: %s\n", elementName)
+        http.Error(w, "URL gambar tidak ditemukan", http.StatusNotFound)
+        return
+    }
+
+    log.Printf("Mengambil gambar dari URL: %s\n", originalImageURL)
+
+    // Lakukan permintaan HTTP GET ke URL gambar asli DARI BACKEND
+    // Kita bisa tambahkan User-Agent agar terlihat seperti permintaan browser jika perlu
+    client := http.Client{
+        Timeout: 10 * time.Second, // Tambahkan timeout untuk request eksternal
+    }
+    req, err := http.NewRequest("GET", originalImageURL, nil)
+    if err != nil {
+         log.Printf("Gagal membuat request ke URL gambar eksternal %s: %v\n", originalImageURL, err)
+         http.Error(w, "Gagal mengambil gambar", http.StatusInternalServerError)
+         return
+    }
+    // Opsional: Coba tambahkan User-Agent agar terlihat seperti browser sungguhan
+    req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MyLittleAlchemyApp/1.0)")
+     // Opsional: Coba tambahkan Referer jika diperlukan oleh server sumber
+     // req.Header.Set("Referer", "http://littlealchemy2.com/")
+
+
+    resp, err := client.Do(req)
+    if err != nil {
+        log.Printf("Gagal melakukan permintaan GET ke URL gambar eksternal %s: %v\n", originalImageURL, err)
+        http.Error(w, "Gagal mengambil gambar", http.StatusInternalServerError)
+        return
+    }
+    defer resp.Body.Close() // Pastikan body respons ditutup
+
+    // Periksa status code dari respons server sumber gambar
+    if resp.StatusCode != http.StatusOK {
+        log.Printf("Server sumber gambar mengembalikan status non-OK untuk %s: %d\n", originalImageURL, resp.StatusCode)
+         // Coba kirim status code yang sama ke frontend jika masuk akal, atau 500
+         http.Error(w, fmt.Sprintf("Gagal mengambil gambar dari sumber (%d)", resp.StatusCode), resp.StatusCode)
+        return
+    }
+
+    // Salin header Content-Type dari respons server sumber gambar ke respons backend kita
+    contentType := resp.Header.Get("Content-Type")
+    if contentType != "" {
+        w.Header().Set("Content-Type", contentType)
+    } else {
+         // Jika Content-Type tidak ada, coba tebak atau default ke SVG
+         if strings.HasSuffix(strings.ToLower(originalImageURL), ".svg") {
+              w.Header().Set("Content-Type", "image/svg+xml")
+         } else if strings.HasSuffix(strings.ToLower(originalImageURL), ".png") {
+               w.Header().Set("Content-Type", "image/png")
+         } // Tambahkan tipe lain jika perlu
+    }
+     // Salin header lain yang relevan jika perlu (misal Cache-Control)
+     // w.Header().Set("Cache-Control", resp.Header.Get("Cache-Control"))
+
+
+    // Salin body respons (data gambar) dari server sumber ke respons backend
+    _, err = io.Copy(w, resp.Body)
+    if err != nil {
+        log.Printf("Gagal menyalin body respons gambar dari %s: %v\n", originalImageURL, err)
+        // Respons mungkin sudah terkirim sebagian, sulit untuk error handling rapi di sini
+        // http.Error(w, "Internal server error while serving image", http.StatusInternalServerError)
+        return // Keluar saja setelah logging
+    }
+
+    log.Printf("Gambar untuk elemen %s berhasil dilayani.\n", elementName)
+    // Tidak perlu memanggil w.WriteHeader(http.StatusOK) karena io.Copy akan menuliskannya jika belum.
 }
 
 
