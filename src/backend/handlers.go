@@ -9,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	// sync tidak perlu di sini
 )
 
-// MultiSearchResponse struct (as defined before)
+// MultiSearchResponse struct (tetap sama)
 type MultiSearchResponse struct {
 	SearchTarget   string              `json:"searchTarget"`
 	Algorithm      string              `json:"algorithm"`
@@ -28,38 +29,41 @@ type MultiSearchResponse struct {
 
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	// ... (CORS headers, Method check) ...
+	// Set CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// Hanya izinkan metode GET
 	if r.Method != http.MethodGet {
 		http.Error(w, "Metode tidak diizinkan", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// ... (Parsing target, algo, mode, maxRecipesStr) ...
+	// 1. Ambil Query Parameters
 	targetElement := strings.TrimSpace(r.URL.Query().Get("target"))
 	algo := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("algo")))
 	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
 	maxRecipesStr := r.URL.Query().Get("max")
 
-	// ... (Default values) ...
+	// Default values
 	if algo == "" { algo = "bfs" }
 	if mode == "" { mode = "shortest" }
 
-	// ... (Validasi targetElement, algo, mode) ...
-    if targetElement == "" { http.Error(w, "Parameter 'target' diperlukan", http.StatusBadRequest); return }
-    if !IsElementExists(targetElement) { http.Error(w, fmt.Sprintf("Elemen target '%s' tidak valid", targetElement), http.StatusBadRequest); return }
-    if algo != "bfs" && algo != "dfs" { http.Error(w, "Parameter 'algo' harus 'bfs' atau 'dfs'", http.StatusBadRequest); return }
-    if mode != "shortest" && mode != "multiple" { http.Error(w, "Parameter 'mode' harus 'shortest' atau 'multiple'", http.StatusBadRequest); return }
+	// 2. Validasi Input Dasar
+	if targetElement == "" { http.Error(w, "Parameter 'target' diperlukan", http.StatusBadRequest); return }
+	// Gunakan IsElementExists dari data.go atau file lain yang sesuai
+	if !IsElementExists(targetElement) { http.Error(w, fmt.Sprintf("Elemen target '%s' tidak valid", targetElement), http.StatusBadRequest); return }
+	if algo != "bfs" && algo != "dfs" { http.Error(w, "Parameter 'algo' harus 'bfs' atau 'dfs'", http.StatusBadRequest); return }
+	if mode != "shortest" && mode != "multiple" { http.Error(w, "Parameter 'mode' harus 'shortest' atau 'multiple'", http.StatusBadRequest); return }
 
-	// ... (Proses parameter 'max' jika mode 'multiple') ...
-    maxRecipes := 1
+	// 3. Proses parameter 'max' jika mode 'multiple'
+	maxRecipes := 1
 	if mode == "multiple" {
 		if maxRecipesStr != "" {
 			var convErr error
 			maxRecipes, convErr = strconv.Atoi(maxRecipesStr)
 			if convErr != nil || maxRecipes <= 0 {
-				http.Error(w, "Parameter 'max' harus angka positif untuk mode 'multiple'", http.StatusBadRequest)
+				http.Error(w, "Parameter 'max' harus berupa angka positif untuk mode 'multiple'", http.StatusBadRequest)
 				return
 			}
 		} else {
@@ -69,7 +73,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 
-	// Panggil Fungsi Algoritma & Ukur Waktu
+	// 4. Panggil Fungsi Algoritma & Ukur Waktu
 	startTime := time.Now()
 
 	var singlePath []Recipe
@@ -80,107 +84,104 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Memulai pencarian: Target=%s, Algo=%s, Mode=%s, Max=%d\n", targetElement, algo, mode, maxRecipes)
 
+	// --- Struktur Response Awal ---
+	response := MultiSearchResponse{
+		SearchTarget:   targetElement,
+		Algorithm:      algo,
+		Mode:           mode,
+		ImageURLs:      make(map[string]string), // Inisialisasi map gambar
+	}
+	if mode == "multiple" {
+		response.MaxRecipes = maxRecipes // Set max recipes jika mode multiple
+	}
+
+	// --- Logika Pemilihan Algoritma ---
 	if mode == "shortest" {
-		// --- Mode Shortest Path ---
 		if algo == "bfs" {
 			singlePath, nodesVisited, err = FindPathBFS(targetElement)
 		} else { // algo == "dfs"
-			log.Printf("Peringatan: Mode 'shortest' dengan algo 'dfs' belum diimplementasikan sepenuhnya. Menjalankan BFS.")
+			// TODO: Implementasi DFS Shortest (IDDFS) jika diperlukan
+			log.Printf("Peringatan: Mode 'shortest' dengan algo 'dfs' belum diimplementasikan. Menjalankan BFS.")
 			singlePath, nodesVisited, err = FindPathDFS(targetElement) // Fallback ke BFS
 		}
-		pathFound = err == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElement(targetElement))) // Cek juga base element
+		// Set hasil untuk mode shortest
+		response.Path = singlePath
+		pathFound = err == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElement(targetElement)))
 
-	} else {
-		// --- Mode Multiple Paths ---
+	} else { // mode == "multiple"
 		if algo == "bfs" {
 			multiplePaths, nodesVisited, err = FindMultiplePathsBFS(targetElement, maxRecipes)
 		} else { // algo == "dfs"
-			// --- PERBAIKAN FALLBACK DI SINI ---
-			log.Printf("Peringatan: Mode 'multiple' dengan algo 'dfs' belum diimplementasikan. Menjalankan mode single path DFS sebagai gantinya.")
-			// Jalankan DFS standar
-			singlePathFallback, nodesVisitedFallback, errFallback := FindPathDFS(targetElement)
-			err = errFallback // Gunakan error dari fallback
-			nodesVisited = nodesVisitedFallback // Gunakan nodes visited dari fallback
-
-			// Jika DFS standar berhasil menemukan path, format hasilnya sebagai multiple path (dengan 1 elemen)
-			if err == nil && len(singlePathFallback) > 0 {
-				multiplePaths = [][]Recipe{singlePathFallback} // Bungkus single path dalam slice of slice
-			} else {
-                // Jika DFS standar gagal atau target adalah base element, multiplePaths tetap kosong
-                multiplePaths = [][]Recipe{}
-            }
-            // ------------------------------------
+			// --- PANGGIL FUNGSI DFS MULTIPLE BARU ---
+			log.Printf("Menjalankan DFS Multiple untuk target: %s, max: %d", targetElement, maxRecipes)
+			multiplePaths, nodesVisited, err = FindMultiplePathsDFS(targetElement, maxRecipes) // Panggil fungsi baru
+            // -----------------------------------------
 		}
-		pathFound = err == nil && len(multiplePaths) > 0 // Path found jika tidak ada error dan ada setidaknya 1 path
-        // Handle kasus target adalah base element (tidak akan masuk ke multiplePaths dari fallback DFS)
-        if err == nil && len(multiplePaths) == 0 && isBaseElement(targetElement) {
-             pathFound = true // Tetap anggap found, tapi paths akan kosong
-        }
+		// Set hasil untuk mode multiple
+		response.Paths = multiplePaths
+		pathFound = err == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
 	}
 
 	duration := time.Since(startTime)
 	log.Printf("Pencarian selesai: Durasi=%v, Nodes=%d, Ditemukan=%t, Error=%v\n", duration, nodesVisited, pathFound, err)
 
-	// Siapkan Struktur Response
-	response := MultiSearchResponse{
-		SearchTarget:   targetElement,
-		Algorithm:      algo,
-		Mode:           mode,
-		PathFound:      pathFound,
-		NodesVisited:   nodesVisited,
-		DurationMillis: duration.Milliseconds(),
-		ImageURLs:      make(map[string]string),
-	}
-
-	// Isi field path/paths berdasarkan mode
-	if mode == "shortest" {
-		response.Path = singlePath
-	} else {
-		response.Paths = multiplePaths // Sekarang ini akan diisi bahkan saat fallback DFS
-		response.MaxRecipes = maxRecipes
-	}
+	// --- Isi sisa response ---
+	response.PathFound = pathFound
+	response.NodesVisited = nodesVisited // Ingat: -1 untuk DFS Multiple saat ini
+	response.DurationMillis = duration.Milliseconds()
 
 	if err != nil {
 		response.Error = err.Error()
 	}
 
-	// Ambil URL Gambar (logika ini seharusnya sudah benar untuk multiplePaths)
+	// --- Ambil URL Gambar ---
 	if response.PathFound {
-        imgMap := GetImageMap()
+        imgMap := GetImageMap() // Pastikan fungsi ini ada dan mengembalikan map[string]string
         elementsInPaths := make(map[string]bool)
-        elementsInPaths[targetElement] = true
+        elementsInPaths[targetElement] = true // Selalu tambahkan target
 
-        pathsToProcess := [][]Recipe{} // Kumpulkan semua path untuk diproses
+        pathsToProcess := [][]Recipe{}
         if mode == "shortest" {
             if len(singlePath) > 0 {
                 pathsToProcess = append(pathsToProcess, singlePath)
             }
-        } else { // mode == "multiple"
+        } else {
             pathsToProcess = multiplePaths // Gunakan hasil dari multiplePaths
         }
 
+        // Kumpulkan semua elemen unik dari semua jalur yang relevan
         for _, path := range pathsToProcess {
             for _, step := range path {
                 elementsInPaths[step.Ingredient1] = true
                 elementsInPaths[step.Ingredient2] = true
+                // elementsInPaths[step.Result] = true // Opsional: tambahkan hasil perantara
             }
         }
 
-		// Tambahkan elemen dasar yang mungkin relevan
+		// Tambahkan elemen dasar jika relevan
 		baseElements := []string{"Air", "Earth", "Fire", "Water"}
 		for _, base := range baseElements {
-			if _, exists := imgMap[base]; exists {
+			// Cek jika gambar ada DAN elemen dasar relevan (target atau ada di path)
+			if imgUrl, exists := imgMap[base]; exists && imgUrl != "" {
 				if (isBaseElement(targetElement) && targetElement == base) || elementsInPaths[base] {
-					elementsInPaths[base] = true
+                    // Hanya tambahkan jika belum ada (meskipun seharusnya tidak terjadi untuk base)
+                    if _, present := response.ImageURLs[base]; !present {
+					    response.ImageURLs[base] = imgUrl
+                    }
 				}
 			}
 		}
 
-		// Ambil URL untuk setiap elemen unik
+		// Ambil URL untuk elemen non-dasar yang unik
 		for elementName := range elementsInPaths {
-			if imgUrl, ok := imgMap[elementName]; ok && imgUrl != "" {
-				response.ImageURLs[elementName] = imgUrl
-			}
+            // Hanya tambahkan jika belum ada DAN bukan elemen dasar (sudah ditangani)
+            if _, isBase := find(baseElements, elementName); !isBase {
+                 if imgUrl, ok := imgMap[elementName]; ok && imgUrl != "" {
+                    if _, exists := response.ImageURLs[elementName]; !exists {
+                         response.ImageURLs[elementName] = imgUrl
+                    }
+                 }
+            }
 		}
 	}
 
@@ -199,7 +200,19 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// // Pastikan fungsi isBaseElement ada dan bisa diakses
+// Helper function find (jika belum ada)
+func find(slice []string, val string) (int, bool) {
+    for i, item := range slice {
+        if item == val {
+            return i, true
+        }
+    }
+    return -1, false
+}
+
+
+// Pastikan fungsi isBaseElement ada dan bisa diakses
+// (Bisa didefinisikan di sini, di dfs.go, atau di data.go)
 // func isBaseElement(name string) bool {
 // 	baseElements := []string{"Air", "Earth", "Fire", "Water"}
 // 	for _, base := range baseElements {
@@ -209,4 +222,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 // 	}
 // 	return false
 // }
+
+// Fungsi reconstructPathRevised (dari bfs.go) diperlukan jika FindPathDFS (single path) masih digunakan
+// Pastikan bisa diakses dari package main
+// func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe { ... }
 
