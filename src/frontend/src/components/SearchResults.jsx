@@ -6,12 +6,27 @@ const isBaseElement = (name) => {
     return baseElements.includes(name);
 };
 
-const buildElementNode = (elementName, pathRecipesMap, imageURLs) => {
+const buildElementNode = (elementName, pathRecipesMap, imageURLs, depth = 0) => {
+     // Tambahkan logging di sini:
+     console.log(`[buildElementNode] Processing: ${elementName}, Depth: ${depth}`);
+
+     // Tambahkan kondisi berhenti darurat sementara untuk debugging jika kedalaman terlalu besar
+     if (depth > 500) { // Angka 500 bisa disesuaikan, tapi >1000 biasanya sudah masalah
+         console.error(`[buildElementNode] Max depth (${depth}) reached for ${elementName}. Stopping recursion.`);
+         return { // Kembalikan simpul sederhana untuk menghentikan rekursi
+              name: `${elementName} (MAX_DEPTH)`,
+              attributes: { type: 'Error', originalName: elementName },
+              children: []
+         };
+     }
+
+
      const node = {
          name: elementName,
          attributes: {
              type: isBaseElement(elementName) ? 'Base Element' : 'Element',
-             imageUrl: imageURLs?.[elementName] || ''
+             imageUrl: imageURLs?.[elementName] || '',
+             depth: depth // Simpan kedalaman untuk debugging/visualisasi
          },
          children: []
      };
@@ -19,32 +34,50 @@ const buildElementNode = (elementName, pathRecipesMap, imageURLs) => {
      const recipeMakingThis = pathRecipesMap[elementName];
 
      if (recipeMakingThis) {
-         const recipeNode = buildRecipeNode(recipeMakingThis, pathRecipesMap, imageURLs);
+         // Panggil rekursif untuk simpul resep, tambahkan depth
+         const recipeNode = buildRecipeNode(recipeMakingThis, pathRecipesMap, imageURLs, depth + 1);
          node.children.push(recipeNode);
      }
 
      return node;
 };
 
-const buildRecipeNode = (recipe, pathRecipesMap, imageURLs) => {
-    const node = {
-        name: `${recipe.ingredient1} + ${recipe.ingredient2}`,
-        attributes: {
-            type: 'Recipe',
-            result: recipe.result,
-            ingredient1: recipe.ingredient1,
-            ingredient2: recipe.ingredient2,
-        },
-        children: []
-    };
 
-    const ingredient1Node = buildElementNode(recipe.ingredient1, pathRecipesMap, imageURLs);
-    const ingredient2Node = buildElementNode(recipe.ingredient2, pathRecipesMap, imageURLs);
+const buildRecipeNode = (recipe, pathRecipesMap, imageURLs, depth = 0) => {
+  // Tambahkan logging di sini:
+  console.log(`[buildRecipeNode] Processing Recipe: ${recipe.ingredient1} + ${recipe.ingredient2} => ${recipe.result}, Depth: ${depth}`);
 
-    node.children.push(ingredient1Node);
-    node.children.push(ingredient2Node);
+   // Tambahkan kondisi berhenti darurat sementara untuk debugging jika kedalaman terlalu besar
+   if (depth > 500) { // Angka 500 bisa disesuaikan
+        console.error(`[buildRecipeNode] Max depth (${depth}) reached for recipe ${recipe.ingredient1} + ${recipe.ingredient2} => ${recipe.result}. Stopping recursion.`);
+         return { // Kembalikan simpul sederhana untuk menghentikan rekursi
+            name: `(${recipe.ingredient1} + ${recipe.ingredient2}) (MAX_DEPTH)`,
+            attributes: { type: 'ErrorRecipe', result: recipe.result },
+            children: []
+        };
+   }
 
-    return node;
+
+  const node = {
+      name: `${recipe.ingredient1} + ${recipe.ingredient2}`,
+      attributes: {
+          type: 'Recipe',
+          result: recipe.result,
+          ingredient1: recipe.ingredient1,
+          ingredient2: recipe.ingredient2,
+          depth: depth // Simpan kedalaman
+      },
+      children: []
+  };
+
+  // Panggil rekursif untuk simpul bahan, tambahkan depth
+  const ingredient1Node = buildElementNode(recipe.ingredient1, pathRecipesMap, imageURLs, depth + 1);
+  const ingredient2Node = buildElementNode(recipe.ingredient2, pathRecipesMap, imageURLs, depth + 1);
+
+  node.children.push(ingredient1Node);
+  node.children.push(ingredient2Node);
+
+  return node;
 };
 
 const buildTreeData = (path, targetElement, imageURLs) => {
@@ -66,7 +99,7 @@ const buildTreeData = (path, targetElement, imageURLs) => {
       pathRecipesMap[recipe.result] = recipe;
   });
 
-  const rootNode = buildElementNode(targetElement, pathRecipesMap, imageURLs);
+  const rootNode = buildElementNode(targetElement, pathRecipesMap, imageURLs, 0);
 
   return [rootNode];
 };
