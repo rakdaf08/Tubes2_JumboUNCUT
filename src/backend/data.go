@@ -57,7 +57,7 @@ func InitData(dataDir string) error {
 		fmt.Println("Memulai pemuatan data awal dari direktori:", dataDir)
 
 		// Load resep
-		tempRecipes, err := loadRecipes(filepath.Join(dataDir, "recipes_scraped.json"))
+		tempRecipes, err := loadRecipes(filepath.Join(dataDir, "recipes_final_filtered.json"))
 		if err != nil {
 			loadDataErr = fmt.Errorf("gagal memuat resep: %w", err)
 			return // Hentikan jika resep gagal dimuat

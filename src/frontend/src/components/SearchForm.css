@@ -1,0 +1,98 @@
+.search-form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #f9f9f9;
+    box-sizing: border-box;
+  }
+  
+  .form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #343a40;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .form-options-group {
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 5px;
+    background: #fff;
+  }
+  
+  .options-title {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #343a40;
+  }
+  
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .radio-label {
+    cursor: pointer;
+    color: #212529;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  .radio-input {
+    margin-right: 5px;
+  }
+  
+  .max-recipes-group {
+    margin-top: 15px;
+  }
+  
+  .max-recipes-label {
+    margin-right: 8px;
+    font-weight: 500;
+    color: #343a40;
+  }
+  
+  .max-recipes-input {
+    width: 70px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .submit-button {
+     padding: 12px 20px;
+     cursor: pointer;
+     background: #0d6efd;
+     color: white;
+     border: none;
+     border-radius: 5px;
+     font-size: 16px;
+     font-weight: bold;
+     transition: background-color 0.2s ease;
+  }
+  
+  .submit-button:hover {
+     background: #0b5ed7;
+  }
+  
+  .submit-button:disabled {
+     cursor: not-allowed;
+     background: #ccc;
+  }
+  
