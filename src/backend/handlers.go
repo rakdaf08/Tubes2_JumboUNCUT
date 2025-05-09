@@ -12,118 +12,117 @@ import (
 	"strings"
 	"time"
 
-	// sync tidak perlu di sini
+	// sync tidak perlu di sini jika tidak digunakan secara langsung di file ini
 )
 
-// MultiSearchResponse struct (tetap sama)
+// MultiSearchResponse struct untuk struktur respons JSON ke frontend
 type MultiSearchResponse struct {
 	SearchTarget   string              `json:"searchTarget"`
 	Algorithm      string              `json:"algorithm"`
 	Mode           string              `json:"mode"`
-	MaxRecipes     int                 `json:"maxRecipes,omitempty"`
+	MaxRecipes     int                 `json:"maxRecipes,omitempty"` // Hanya ada jika mode multiple
 	PathFound      bool                `json:"pathFound"`
-	Path           []Recipe            `json:"path,omitempty"` // For shortest mode
-	Paths          [][]Recipe          `json:"paths,omitempty"` // For multiple mode
-	ImageURLs      map[string]string   `json:"imageURLs,omitempty"`
+	Path           []Recipe            `json:"path,omitempty"`        // Untuk mode shortest
+	Paths          [][]Recipe          `json:"paths,omitempty"`       // Untuk mode multiple
+	ImageURLs      map[string]string   `json:"imageURLs,omitempty"` // URL gambar untuk elemen yang relevan
 	NodesVisited   int                 `json:"nodesVisited"`
 	DurationMillis int64               `json:"durationMillis"`
-	Error          string              `json:"error,omitempty"`
+	Error          string              `json:"error,omitempty"`       // Pesan error jika ada
 }
 
-// imageHandler function (tetap sama seperti sebelumnya)
+// imageHandler berfungsi sebagai proxy untuk mengambil gambar elemen dari URL aslinya.
+// Ini membantu menghindari masalah CORS di frontend.
 func imageHandler(w http.ResponseWriter, r *http.Request) {
-    // Set CORS headers agar frontend bisa mengakses
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	// Set CORS headers agar frontend bisa mengakses
+	w.Header().Set("Access-Control-Allow-Origin", "*") // Izinkan akses dari origin manapun
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Header yang diizinkan
 
-    // Hanya izinkan metode GET
-    if r.Method != http.MethodGet {
-        http.Error(w, "Metode tidak diizinkan", http.StatusMethodNotAllowed)
-        return
-    }
+	// Hanya izinkan metode GET
+	if r.Method != http.MethodGet {
+		http.Error(w, "Metode tidak diizinkan", http.StatusMethodNotAllowed)
+		return
+	}
 
-    // Ambil nama elemen dari query parameter 'elementName'
-    queryParams := r.URL.Query()
-    elementName := queryParams.Get("elementName")
+	// Ambil nama elemen dari query parameter 'elementName'
+	queryParams := r.URL.Query()
+	elementName := queryParams.Get("elementName")
 
-    if elementName == "" {
-        http.Error(w, "Parameter 'elementName' diperlukan", http.StatusBadRequest)
-        return
-    }
+	if elementName == "" {
+		http.Error(w, "Parameter 'elementName' diperlukan", http.StatusBadRequest)
+		return
+	}
 
-    log.Printf("Menerima permintaan gambar untuk elemen: %s\n", elementName)
+	log.Printf("Menerima permintaan gambar untuk elemen: %s\n", elementName)
 
-    // Dapatkan map URL gambar dari data yang sudah dimuat
-    imageMap := GetImageMap() // Pastikan fungsi GetImageMap() tersedia dari data.go
+	// Dapatkan map URL gambar dari data yang sudah dimuat (dari data.go)
+	imageMap := GetImageMap() // Asumsikan GetImageMap() mengembalikan map[string]string
 
-    // Cari URL gambar asli untuk elemen ini
-    originalImageURL, found := imageMap[elementName]
-    if !found || originalImageURL == "" {
-        log.Printf("URL gambar tidak ditemukan untuk elemen: %s\n", elementName)
-        http.Error(w, "URL gambar tidak ditemukan", http.StatusNotFound)
-        return
-    }
+	// Cari URL gambar asli untuk elemen ini
+	originalImageURL, found := imageMap[elementName]
+	if !found || originalImageURL == "" {
+		log.Printf("URL gambar tidak ditemukan untuk elemen: %s\n", elementName)
+		http.Error(w, "URL gambar tidak ditemukan", http.StatusNotFound)
+		return
+	}
 
-    log.Printf("Mengambil gambar dari URL: %s\n", originalImageURL)
+	log.Printf("Mengambil gambar dari URL: %s\n", originalImageURL)
 
-    // Lakukan permintaan HTTP GET ke URL gambar asli DARI BACKEND
-    client := http.Client{
-        Timeout: 10 * time.Second, // Tambahkan timeout untuk request eksternal
-    }
-    req, err := http.NewRequest("GET", originalImageURL, nil)
-    if err != nil {
-         log.Printf("Gagal membuat request ke URL gambar eksternal %s: %v\n", originalImageURL, err)
-         http.Error(w, "Gagal mengambil gambar", http.StatusInternalServerError)
-         return
-    }
-    // Opsional: Coba tambahkan User-Agent agar terlihat seperti browser sungguhan
-    req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MyLittleAlchemyApp/1.0)")
-     // Opsional: Coba tambahkan Referer jika diperlukan oleh server sumber
-     // req.Header.Set("Referer", "http://littlealchemy2.com/")
+	// Lakukan permintaan HTTP GET ke URL gambar asli DARI BACKEND
+	client := http.Client{
+		Timeout: 10 * time.Second, // Tambahkan timeout untuk request eksternal
+	}
+	req, err := http.NewRequest("GET", originalImageURL, nil)
+	if err != nil {
+		log.Printf("Gagal membuat request ke URL gambar eksternal %s: %v\n", originalImageURL, err)
+		http.Error(w, "Gagal mengambil gambar (internal server error)", http.StatusInternalServerError)
+		return
+	}
+	// Opsional: Tambahkan User-Agent agar terlihat seperti browser sungguhan
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MyLittleAlchemyApp/1.0; +http://localhost)")
 
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Gagal melakukan permintaan GET ke URL gambar eksternal %s: %v\n", originalImageURL, err)
+		http.Error(w, "Gagal mengambil gambar dari sumber eksternal", http.StatusBadGateway) // Atau StatusInternalServerError
+		return
+	}
+	defer resp.Body.Close() // Pastikan body respons ditutup
 
-    resp, err := client.Do(req)
-    if err != nil {
-        log.Printf("Gagal melakukan permintaan GET ke URL gambar eksternal %s: %v\n", originalImageURL, err)
-        http.Error(w, "Gagal mengambil gambar", http.StatusInternalServerError)
-        return
-    }
-    defer resp.Body.Close() // Pastikan body respons ditutup
+	// Periksa status code dari respons server sumber gambar
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Server sumber gambar mengembalikan status non-OK untuk %s: %d\n", originalImageURL, resp.StatusCode)
+		// Teruskan status code error dari server sumber jika memungkinkan, atau gunakan default
+		http.Error(w, fmt.Sprintf("Gagal mengambil gambar dari sumber (status: %d)", resp.StatusCode), resp.StatusCode)
+		return
+	}
 
-    // Periksa status code dari respons server sumber gambar
-    if resp.StatusCode != http.StatusOK {
-        log.Printf("Server sumber gambar mengembalikan status non-OK untuk %s: %d\n", originalImageURL, resp.StatusCode)
-         http.Error(w, fmt.Sprintf("Gagal mengambil gambar dari sumber (%d)", resp.StatusCode), resp.StatusCode)
-        return
-    }
+	// Salin header Content-Type dari respons server sumber gambar ke respons backend kita
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	} else {
+		// Jika Content-Type tidak ada, coba tebak atau default
+		if strings.HasSuffix(strings.ToLower(originalImageURL), ".svg") {
+			w.Header().Set("Content-Type", "image/svg+xml")
+		} else if strings.HasSuffix(strings.ToLower(originalImageURL), ".png") {
+			w.Header().Set("Content-Type", "image/png")
+		} // Tambahkan tipe lain jika perlu (jpg, gif, dll.)
+	}
+	// Anda juga bisa menyalin header lain yang relevan jika perlu (misal Cache-Control)
+	// w.Header().Set("Cache-Control", resp.Header.Get("Cache-Control"))
 
-    // Salin header Content-Type dari respons server sumber gambar ke respons backend kita
-    contentType := resp.Header.Get("Content-Type")
-    if contentType != "" {
-        w.Header().Set("Content-Type", contentType)
-    } else {
-         // Jika Content-Type tidak ada, coba tebak atau default ke SVG
-         if strings.HasSuffix(strings.ToLower(originalImageURL), ".svg") {
-              w.Header().Set("Content-Type", "image/svg+xml")
-         } else if strings.HasSuffix(strings.ToLower(originalImageURL), ".png") {
-               w.Header().Set("Content-Type", "image/png")
-         } // Tambahkan tipe lain jika perlu
-    }
-     // Salin header lain yang relevan jika perlu (misal Cache-Control)
-     // w.Header().Set("Cache-Control", resp.Header.Get("Cache-Control"))
+	// Salin body respons (data gambar) dari server sumber ke respons backend
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		log.Printf("Gagal menyalin body respons gambar dari %s: %v\n", originalImageURL, err)
+		// Tidak mengirim http.Error lagi karena header mungkin sudah terkirim
+		return
+	}
 
-
-    // Salin body respons (data gambar) dari server sumber ke respons backend
-    _, err = io.Copy(w, resp.Body)
-    if err != nil {
-        log.Printf("Gagal menyalin body respons gambar dari %s: %v\n", originalImageURL, err)
-        return // Keluar saja setelah logging
-    }
-
-    log.Printf("Gambar untuk elemen %s berhasil dilayani.\n", elementName)
+	log.Printf("Gambar untuk elemen %s berhasil dilayani.\n", elementName)
 }
 
-
+// searchHandler menangani permintaan pencarian resep dari frontend.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Set CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -141,33 +140,50 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
 	maxRecipesStr := r.URL.Query().Get("max")
 
-	// Default values
-	if algo == "" { algo = "bfs" }
-	if mode == "" { mode = "shortest" }
+	// Default values jika parameter tidak ada
+	if algo == "" {
+		algo = "bfs" // Default ke BFS
+	}
+	if mode == "" {
+		mode = "shortest" // Default ke mode shortest
+	}
 
 	// 2. Validasi Input Dasar
-	if targetElement == "" { http.Error(w, "Parameter 'target' diperlukan", http.StatusBadRequest); return }
+	if targetElement == "" {
+		http.Error(w, "Parameter 'target' diperlukan", http.StatusBadRequest)
+		return
+	}
 	// Gunakan IsElementExists dari data.go atau file lain yang sesuai
-	if !IsElementExists(targetElement) { http.Error(w, fmt.Sprintf("Elemen target '%s' tidak valid", targetElement), http.StatusBadRequest); return }
-	if algo != "bfs" && algo != "dfs" { http.Error(w, "Parameter 'algo' harus 'bfs' atau 'dfs'", http.StatusBadRequest); return }
-	if mode != "shortest" && mode != "multiple" { http.Error(w, "Parameter 'mode' harus 'shortest' atau 'multiple'", http.StatusBadRequest); return }
+	if !IsElementExists(targetElement) {
+		http.Error(w, fmt.Sprintf("Elemen target '%s' tidak valid atau tidak ditemukan", targetElement), http.StatusBadRequest)
+		return
+	}
+	if algo != "bfs" && algo != "dfs" && algo != "bds" { // Validasi algoritma
+		http.Error(w, "Parameter 'algo' harus 'bfs', 'dfs', atau 'bds'", http.StatusBadRequest)
+		return
+	}
+	if mode != "shortest" && mode != "multiple" { // Validasi mode
+		http.Error(w, "Parameter 'mode' harus 'shortest' atau 'multiple'", http.StatusBadRequest)
+		return
+	}
 
 	// 3. Proses parameter 'max' jika mode 'multiple'
-	maxRecipes := 1
+	maxRecipes := 1 // Default untuk mode 'shortest' atau jika 'max' tidak valid
 	if mode == "multiple" {
 		if maxRecipesStr != "" {
 			var convErr error
 			maxRecipes, convErr = strconv.Atoi(maxRecipesStr)
 			if convErr != nil || maxRecipes <= 0 {
-				http.Error(w, "Parameter 'max' harus berupa angka positif untuk mode 'multiple'", http.StatusBadRequest)
+				http.Error(w, "Parameter 'max' harus berupa angka positif lebih besar dari 0 untuk mode 'multiple'", http.StatusBadRequest)
 				return
 			}
 		} else {
+			// Jika mode multiple tapi 'max' tidak disediakan, bisa set default atau error
+			// Untuk sekarang, kita error jika tidak ada 'max' di mode multiple
 			http.Error(w, "Parameter 'max' diperlukan untuk mode 'multiple'", http.StatusBadRequest)
 			return
 		}
 	}
-
 
 	// 4. Panggil Fungsi Algoritma & Ukur Waktu
 	startTime := time.Now()
@@ -175,149 +191,153 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	var singlePath []Recipe
 	var multiplePaths [][]Recipe
 	var nodesVisited int
-	var err error
+	var errSearch error // Ubah nama variabel error agar tidak bentrok dengan package 'errors'
 	var pathFound bool
 
-	log.Printf("Memulai pencarian: Target=%s, Algo=%s, Mode=%s, Max=%d\n", targetElement, algo, mode, maxRecipes)
+	log.Printf("Memulai pencarian: Target=%s, Algo=%s, Mode=%s, MaxRecipes=%d\n", targetElement, algo, mode, maxRecipes)
 
 	// --- Struktur Response Awal ---
 	response := MultiSearchResponse{
-		SearchTarget:   targetElement,
-		Algorithm:      algo,
-		Mode:           mode,
-		// ImageURLs akan diinisialisasi nanti setelah path ditemukan
+		SearchTarget: targetElement,
+		Algorithm:    algo,
+		Mode:         mode,
 	}
 	if mode == "multiple" {
 		response.MaxRecipes = maxRecipes // Set max recipes jika mode multiple
 	}
 
 	// --- Logika Pemilihan Algoritma ---
-	if mode == "shortest" {
-		if algo == "bfs" {
-			singlePath, nodesVisited, err = FindPathBFS(targetElement)
-		} else { // algo == "dfs"
-			// TODO: Implementasi DFS Shortest (IDDFS) jika diperlukan
-			log.Printf("Peringatan: Mode 'shortest' dengan algo 'dfs' belum diimplementasikan. Menjalankan DFS Single Path.")
-			singlePath, nodesVisited, err = FindPathDFS(targetElement) // Menggunakan DFS Single Path
+	if algo == "bfs" {
+		if mode == "shortest" {
+			singlePath, nodesVisited, errSearch = FindPathBFS(targetElement)
+			response.Path = singlePath
+			// pathFound true jika tidak ada error DAN (path tidak kosong ATAU target adalah elemen dasar)
+			pathFound = errSearch == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElement(targetElement)))
+		} else { // mode == "multiple"
+			multiplePaths, nodesVisited, errSearch = FindMultiplePathsBFS(targetElement, maxRecipes)
+			response.Paths = multiplePaths
+			pathFound = errSearch == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
 		}
-		// Set hasil untuk mode shortest
-		response.Path = singlePath
-		// pathFound true jika tidak ada error DAN (path tidak kosong ATAU target adalah elemen dasar)
-		pathFound = err == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElement(targetElement)))
-
-
-	} else { // mode == "multiple"
-		if algo == "bfs" {
-			multiplePaths, nodesVisited, err = FindMultiplePathsBFS(targetElement, maxRecipes)
-		} else { // algo == "dfs"
-			// --- PANGGIL FUNGSI DFS MULTIPLE BARU ---
+	} else if algo == "dfs" {
+		if mode == "shortest" {
+			singlePath, nodesVisited, errSearch = FindPathDFS(targetElement) // Menggunakan DFS Single Path
+			response.Path = singlePath
+			pathFound = errSearch == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElement(targetElement)))
+		} else { // mode == "multiple"
 			log.Printf("Menjalankan DFS Multiple untuk target: %s, max: %d", targetElement, maxRecipes)
-			multiplePaths, nodesVisited, err = FindMultiplePathsDFS(targetElement, maxRecipes) // Panggil fungsi baru
-            // -----------------------------------------
+			multiplePaths, nodesVisited, errSearch = FindMultiplePathsDFS(targetElement, maxRecipes)
+			response.Paths = multiplePaths
+			pathFound = errSearch == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
 		}
-		// Set hasil untuk mode multiple
-		response.Paths = multiplePaths
-		// pathFound true jika tidak ada error DAN (paths tidak kosong ATAU target adalah elemen dasar)
-		pathFound = err == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
+	} else if algo == "bds" {
+		log.Printf("Permintaan BDS diterima untuk Target: %s, Mode: %s, MaxRecipes: %d\n", targetElement, mode, maxRecipes)
+		if mode == "shortest" {
+			singlePath, nodesVisited, errSearch = FindPathBDS(targetElement) // Panggil placeholder BDS
+			response.Path = singlePath
+			// Logika pathFound untuk BDS setelah diimplementasikan
+			pathFound = errSearch == nil && singlePath != nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElement(targetElement)))
+			if errSearch != nil { // Jika fungsi placeholder mengembalikan error "belum diimplementasikan"
+				log.Printf("FindPathBDS error: %v", errSearch)
+				pathFound = false // Pastikan pathFound false jika ada error implementasi
+			}
+		} else { // mode == "multiple"
+			multiplePaths, nodesVisited, errSearch = FindMultiplePathsBDS(targetElement, maxRecipes) // Panggil placeholder BDS
+			response.Paths = multiplePaths
+			// Logika pathFound untuk BDS setelah diimplementasikan
+			pathFound = errSearch == nil && multiplePaths != nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
+			if errSearch != nil { // Jika fungsi placeholder mengembalikan error "belum diimplementasikan"
+				log.Printf("FindMultiplePathsBDS error: %v", errSearch)
+				pathFound = false // Pastikan pathFound false jika ada error implementasi
+			}
+		}
 	}
 
 	duration := time.Since(startTime)
-	log.Printf("Pencarian selesai: Durasi=%v, Nodes=%d, Ditemukan=%t, Error=%v\n", duration, nodesVisited, pathFound, err)
+	log.Printf("Pencarian selesai: Durasi=%v, Nodes Dikeluarkan dari Queue/Stack (Perkiraan)=%d, Path Ditemukan=%t, Error=%v\n", duration, nodesVisited, pathFound, errSearch)
 
 	// --- Isi sisa response ---
 	response.PathFound = pathFound
-	response.NodesVisited = nodesVisited // Ingat: -1 untuk DFS Multiple saat ini
+	response.NodesVisited = nodesVisited
 	response.DurationMillis = duration.Milliseconds()
 
-	if err != nil {
-		response.Error = err.Error()
+	if errSearch != nil {
+		response.Error = errSearch.Error()
 	}
 
 	// --- Ambil URL Gambar untuk SEMUA elemen yang relevan ---
-	// Bagian ini diperbaiki untuk memastikan URL proxy yang benar digunakan
 	if response.PathFound {
-        imgMap := GetImageMap() // Pastikan fungsi ini ada dan mengembalikan map[string]string
-        elementsInPaths := make(map[string]bool)
+		imgMap := GetImageMap() // Pastikan fungsi ini ada dan mengembalikan map[string]string
+		elementsInPaths := make(map[string]bool)
 
-        // Kumpulkan semua elemen unik dari semua jalur resep yang berhasil ditemukan
-        pathsToProcess := [][]Recipe{}
-        if response.Mode == "shortest" && response.Path != nil {
-             if len(response.Path) > 0 { // Hanya tambahkan path jika tidak kosong
-                pathsToProcess = append(pathsToProcess, response.Path)
-            }
-        } else if response.Mode == "multiple" && response.Paths != nil {
-             if len(response.Paths) > 0 { // Hanya tambahkan paths jika tidak kosong
-                 pathsToProcess = response.Paths
-             }
-        }
+		// Kumpulkan semua elemen unik dari semua jalur resep yang berhasil ditemukan
+		pathsToProcess := [][]Recipe{}
+		if response.Mode == "shortest" && response.Path != nil {
+			if len(response.Path) > 0 { // Hanya tambahkan path jika tidak kosong
+				pathsToProcess = append(pathsToProcess, response.Path)
+			}
+		} else if response.Mode == "multiple" && response.Paths != nil {
+			if len(response.Paths) > 0 { // Hanya tambahkan paths jika tidak kosong
+				pathsToProcess = response.Paths
+			}
+		}
+		// Tambahkan target elemen ke elementsInPaths jika belum ada (khususnya jika elemen dasar)
+		elementsInPaths[response.SearchTarget] = true
 
-        // Kumpulkan semua elemen unik dari semua jalur yang berhasil ditemukan
-        for _, path := range pathsToProcess {
-            for _, step := range path {
-                elementsInPaths[step.Ingredient1] = true
-                elementsInPaths[step.Ingredient2] = true
-                elementsInPaths[step.Result] = true // Tambahkan juga elemen hasil di setiap langkah
-            }
-        }
-        // Tambahkan target elemen ke elementsInPaths jika belum ada
-        elementsInPaths[response.SearchTarget] = true
+		for _, path := range pathsToProcess {
+			for _, step := range path {
+				elementsInPaths[step.Ingredient1] = true
+				elementsInPaths[step.Ingredient2] = true
+				elementsInPaths[step.Result] = true // Tambahkan juga elemen hasil di setiap langkah
+			}
+		}
 
-
-		response.ImageURLs = make(map[string]string) // Inisialisasi map gambar di sini setelah tahu elemen mana yang relevan
-
-		// Iterasi SEMUA elemen relevan (dari paths + target) dan tambahkan URL proxy mereka
+		response.ImageURLs = make(map[string]string) // Inisialisasi map gambar di sini
 		for elementName := range elementsInPaths {
-			// Cek apakah elemen ini punya gambar di map asli
-			if imgUrl, ok := imgMap[elementName]; ok && imgUrl != "" {
+			if imgActualUrl, ok := imgMap[elementName]; ok && imgActualUrl != "" {
 				// BUAT URL YANG MENGARAH ke endpoint backend proxy /api/image
-				// Gunakan url.QueryEscape untuk memastikan nama elemen aman dalam query string URL
 				proxyUrl := fmt.Sprintf("/api/image?elementName=%s", url.QueryEscape(elementName))
-
-				// Simpan URL proxy RELATIF di response.ImageURLs
-				// Cek apakah sudah ada (seharusnya tidak ada karena map baru diinisialisasi)
 				if _, exists := response.ImageURLs[elementName]; !exists {
 					response.ImageURLs[elementName] = proxyUrl
 				}
-			} else {
-                 // Opsional: Jika elemen tidak punya URL gambar di map asli, bisa dicatat atau diabaikan
-                 // fmt.Printf("Info: URL gambar tidak ditemukan di map asli untuk elemen '%s'.\n", elementName)
-            }
+			}
 		}
 	}
-    // END --- Ambil URL Gambar ---
-
+	// END --- Ambil URL Gambar ---
 
 	// Encode Response ke JSON dan Kirim
 	w.Header().Set("Content-Type", "application/json")
-	jsonResponse, jsonErr := json.MarshalIndent(response, "", "  ") // Perbaiki indentasi
+	jsonResponse, jsonErr := json.MarshalIndent(response, "", "  ") // Gunakan MarshalIndent untuk pretty print
 	if jsonErr != nil {
 		log.Printf("Error saat marshal JSON response: %v", jsonErr)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error saat membuat respons JSON", http.StatusInternalServerError)
 		return
 	}
 
 	_, writeErr := w.Write(jsonResponse)
 	if writeErr != nil {
 		log.Printf("Error saat menulis JSON response: %v", writeErr)
+		// Tidak mengirim http.Error lagi karena header mungkin sudah terkirim
 	}
 }
 
-// Helper function find (jika belum ada)
+// Helper function find (jika belum ada di package main atau tidak ter-ekspor)
+// Anda bisa meletakkannya di file util terpisah jika digunakan di banyak tempat.
 func find(slice []string, val string) (int, bool) {
-    for i, item := range slice {
-        if item == val {
-            return i, true
-        }
-    }
-    return -1, false
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
 }
 
-
-// Pastikan fungsi isBaseElement ada dan bisa diakses
-// (Bisa didefinisikan di sini, di dfs.go, atau di data.go)
-// func isBaseElement(name string) bool { ... }
-
-// Pastikan fungsi reconstructPathRevised (dari bfs.go) diperlukan jika FindPathDFS (single path) masih digunakan
-// Pastikan bisa diakses dari package main
-// func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe { ... }
-
+// Fungsi isBaseElement (harus konsisten dengan yang ada di bfs.go/dfs.go atau dipindahkan ke data.go)
+// func isBaseElement(name string) bool {
+// 	baseElements := []string{"Air", "Earth", "Fire", "Water"}
+// 	for _, base := range baseElements {
+// 		if name == base {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }

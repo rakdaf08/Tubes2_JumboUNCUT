@@ -3,6 +3,7 @@ import './SearchForm.css';
 
 function SearchForm({ onSearchSubmit, isLoading }) {
   const [target, setTarget] = useState('');
+  // Defaultkan ke bfs atau algoritma lain jika diinginkan
   const [algo, setAlgo] = useState('bfs');
   const [mode, setMode] = useState('shortest');
   const [maxRecipes, setMaxRecipes] = useState(1);
@@ -50,7 +51,7 @@ function SearchForm({ onSearchSubmit, isLoading }) {
                 checked={algo === 'bfs'}
                 onChange={(e) => setAlgo(e.target.value)}
                 className="radio-input"
-              /> BFS (Shortest Path)
+              /> BFS
             </label>
             <label className="radio-label">
               <input
@@ -59,7 +60,17 @@ function SearchForm({ onSearchSubmit, isLoading }) {
                 checked={algo === 'dfs'}
                 onChange={(e) => setAlgo(e.target.value)}
                  className="radio-input"
-              /> DFS (A Path / Multiple)
+              /> DFS
+            </label>
+            {/* Tombol Radio Baru untuk Bidirectional */}
+            <label className="radio-label">
+              <input
+                type="radio"
+                value="bds" // Nilai untuk Bidirectional Search
+                checked={algo === 'bds'}
+                onChange={(e) => setAlgo(e.target.value)}
+                className="radio-input"
+              /> Bidirectional
             </label>
         </div>
       </div>
