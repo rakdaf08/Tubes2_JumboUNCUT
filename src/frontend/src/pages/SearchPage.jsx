@@ -29,7 +29,6 @@ function SearchPage() {
 
   return (
     <div className="search-page-container">
-      <h1 className="page-title">Pencari Resep Little Alchemy 2</h1>
       <SearchForm onSearchSubmit={handleSearch} isLoading={isLoading} />
       <SearchResults results={searchResults} isLoading={isLoading} error={error} />
     </div>
