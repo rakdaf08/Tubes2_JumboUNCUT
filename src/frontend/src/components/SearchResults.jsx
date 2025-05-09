@@ -489,35 +489,6 @@ function SearchResults({ results, isLoading, error }) {
                  Jalur tidak ditemukan untuk elemen "{results.searchTarget || 'N/A'}". {results.error ? `(${results.error})` : ''}
             </div>
        )}
-
-
-      {/* AREA UNTUK MENAMPILKAN URL GAMBAR */}
-      {results.imageURLs && typeof results.imageURLs === 'object' && Object.keys(results.imageURLs).length > 0 && (
-           <details style={{ marginTop: '20px', border: '1px solid #ddd', borderRadius: '5px', background: '#ffffff' }}>
-              <summary style={{ padding: '10px', cursor: 'pointer', fontWeight: 'bold', color: '#495057' }}>Tampilkan/Sembunyikan URL Gambar Terkait</summary>
-              <ul style={{ listStyle: 'none', padding: '15px', margin: '0', maxHeight: '150px', overflowY: 'auto' }}>
-                {Object.entries(results.imageURLs).map(([name, url]) => (
-                  <li key={name} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', color: '#212529' }}>
-                    {/* Gunakan URL dari imageURLs yang sudah berisi path ke backend proxy */}
-                    {/* url dari imageURLs seharusnya "/api/image?elementName=..." */}
-                    {url ? (
-                         <img
-                           src={`${API_BASE_URL}${url}`} // <-- Gabungkan API_BASE_URL dengan path dari imageURLs
-                           alt={name || '?'}
-                           style={{ height: '40px', width: '40px', verticalAlign: 'middle', marginRight: '8px', border: '1px solid #eee', objectFit: 'contain' }}
-                           onError={(e) => { e.target.style.display = 'none'; }}
-                         />
-                    ) : null}
-                    <span style={{ fontWeight: '500', marginRight: '5px' }}>{name || 'N/A'}:</span>
-                    {/* Link juga perlu digabungkan dengan API_BASE_URL */}
-                    <a href={`${API_BASE_URL}${url}` || '#'} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', color: '#0d6efd', wordBreak: 'break-all' }}>{url || 'N/A'}</a> {/* Juga perbaiki link di sini */}
-                  </li>
-                ))}
-              </ul>
-           </details>
-        )}
-
-
     </div>
   );
 }

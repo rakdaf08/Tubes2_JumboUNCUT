@@ -4,6 +4,7 @@ package main // Package sama dengan main.go
 import (
 	"encoding/json"
 	"fmt"
+
 	// "log"
 	"os"
 	"path/filepath"
@@ -41,6 +42,8 @@ var (
 	// allElementNames menyimpan daftar semua nama elemen unik (hasil + bahan)
 	// Berguna untuk validasi input atau fitur lain nanti
 	allElementNames map[string]bool
+
+	bfsPathCache = make(map[string][]Recipe)
 
 	// loadDataOnce digunakan untuk memastikan data hanya dimuat sekali
 	loadDataOnce sync.Once

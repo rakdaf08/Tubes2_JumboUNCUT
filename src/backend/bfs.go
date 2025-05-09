@@ -10,6 +10,17 @@ import (
 	"sync"
 )
 
+// isBaseElement (fungsi ini tetap sama)
+func isBaseElement(name string) bool {
+	baseElements := []string{"Air", "Earth", "Fire", "Water"}
+	for _, base := range baseElements {
+		if name == base {
+			return true
+		}
+	}
+	return false
+}
+
 // FindPathBFS (fungsi ini tetap sama, untuk mode shortest)
 func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 	fmt.Printf("Mencari jalur BFS (shortest) ke: %s\n", targetElement)
@@ -18,32 +29,92 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 		return nil, 0, errors.New("graf alkimia belum diinisialisasi")
 	}
 
+	if path, exists := bfsPathCache[targetElement]; exists {
+		fmt.Printf("BFS Cache: Jalur ke '%s' ditemukan di cache.\n", targetElement)
+		return path, 0, nil
+	}
+
 	queue := list.New()
 	visited := make(map[string]bool)
-	parent := make(map[string]Recipe) // Tipe map[string]Recipe untuk BFS standar
+	parent := make(map[string]Recipe)
 	nodesVisitedCount := 0
+	depth := make(map[string]int)
+	knownElements := make(map[string]bool)
 
-	baseElements := []string{"Air", "Earth", "Fire", "Water"}
-
+	baseElements := []string{"Water", "Earth", "Air", "Fire"}
 	for _, base := range baseElements {
-		if base == targetElement {
-			return []Recipe{}, 0, nil
-		}
-		if _, exists := graph[base]; exists || isBaseElement(base) {
-			if !visited[base] {
-				queue.PushBack(base)
-				visited[base] = true
+		knownElements[base] = true
+		visited[base] = true
+		queue.PushBack(base)
+		fmt.Printf("Enqueue base element: %s\n", base)
+	}
+
+	// Tahap 1: Kombinasi sejenis (Air+Air, Fire+Fire, dst)
+	for _, elem := range baseElements {
+		recipes := getRecipes(elem, elem)
+		for _, recipe := range recipes {
+			result := recipe.Result
+			if !visited[result] {
+				visited[result] = true
+				parent[result] = recipe
+				depth[result] = 1
+				queue.PushBack(result)
+				knownElements[result] = true
+				fmt.Printf("Enqueue (Tahap 1): %s (dari %s + %s)\n", result, elem, elem)
+
+				if result == targetElement {
+					fmt.Printf("BFS (shortest): Target '%s' ditemukan langsung di inisialisasi tahap 1!\n", targetElement)
+					path := reconstructPathRevised(parent, targetElement)
+					bfsPathCache[targetElement] = path
+					return path, 1, nil
+				}
 			}
 		}
 	}
 
+	// Tahap 2: Kombinasi beda elemen (Air+Earth, Air+Fire, dst)
+	for i := 0; i < len(baseElements); i++ {
+		for j := i + 1; j < len(baseElements); j++ {
+			a := baseElements[i]
+			b := baseElements[j]
+			recipes := getRecipes(a, b)
+			for _, recipe := range recipes {
+				result := recipe.Result
+				if !visited[result] {
+					visited[result] = true
+					parent[result] = recipe
+					depth[result] = 1
+					queue.PushBack(result)
+					knownElements[result] = true
+					fmt.Printf("Enqueue (Tahap 2): %s (dari %s + %s)\n", result, a, b)
+
+					if result == targetElement {
+						fmt.Printf("BFS (shortest): Target '%s' ditemukan langsung di inisialisasi tahap 2!\n", targetElement)
+						path := reconstructPathRevised(parent, targetElement)
+						bfsPathCache[targetElement] = path
+						return path, 1, nil
+					}
+				}
+			}
+		}
+	}
+
+	// BFS traversal
 	for queue.Len() > 0 {
 		queueElement := queue.Front()
 		currentElement := queueElement.Value.(string)
 		queue.Remove(queueElement)
+		fmt.Printf("Dequeue: %s\n", currentElement)
 		nodesVisitedCount++
 
-		recipesInvolvingCurrent := graph[currentElement]
+		recipesInvolvingCurrent, exists := graph[currentElement]
+		if !exists {
+			continue
+		}
+
+		sort.SliceStable(recipesInvolvingCurrent, func(i, j int) bool {
+			return recipesInvolvingCurrent[i].Result < recipesInvolvingCurrent[j].Result
+		})
 
 		for _, recipe := range recipesInvolvingCurrent {
 			var otherIngredient string
@@ -53,28 +124,86 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 				otherIngredient = recipe.Ingredient1
 			}
 
-			if visited[otherIngredient] {
+			if knownElements[otherIngredient] {
 				result := recipe.Result
-				if !visited[result] {
+				newDepth := depth[currentElement] + 1
+				if existingDepth, exists := depth[result]; !exists || newDepth < existingDepth {
+					depth[result] = newDepth
+					parent[result] = recipe
 					visited[result] = true
-					parent[result] = recipe // Simpan resep pertama
 					queue.PushBack(result)
+					knownElements[result] = true
+					fmt.Printf("Enqueue: %s (dari %s + %s)\n", result, currentElement, otherIngredient)
 
 					if result == targetElement {
 						fmt.Printf("BFS (shortest): Target '%s' ditemukan!\n", targetElement)
 						path := reconstructPathRevised(parent, targetElement)
+						bfsPathCache[targetElement] = path
 						return path, nodesVisitedCount, nil
 					}
 				}
 			}
 		}
+
+		knownElements[currentElement] = true
 	}
 
 	fmt.Printf("BFS (shortest): Target '%s' tidak dapat ditemukan.\n", targetElement)
 	return nil, nodesVisitedCount, fmt.Errorf("jalur ke elemen '%s' tidak ditemukan", targetElement)
 }
 
-// --- Implementasi BFS Multiple Path (Logika Berhenti Dilonggarkan) ---
+// reconstructPathRevised (fungsi ini tetap sama)
+func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe {
+	path := list.New()
+	queue := list.New()
+	queue.PushBack(target)
+	processedForPath := make(map[string]bool)
+	processedForPath[target] = true
+
+	for queue.Len() > 0 {
+		queueEl := queue.Front()
+		current := queueEl.Value.(string)
+		queue.Remove(queueEl)
+
+		recipe, exists := parent[current]
+		if !exists {
+			continue
+		}
+
+		path.PushFront(recipe)
+
+		if _, processed := processedForPath[recipe.Ingredient1]; !processed {
+			if _, parentExists := parent[recipe.Ingredient1]; parentExists || isBaseElement(recipe.Ingredient1) {
+				queue.PushBack(recipe.Ingredient1)
+				processedForPath[recipe.Ingredient1] = true
+			}
+		}
+		if _, processed := processedForPath[recipe.Ingredient2]; !processed {
+			if _, parentExists := parent[recipe.Ingredient2]; parentExists || isBaseElement(recipe.Ingredient2) {
+				queue.PushBack(recipe.Ingredient2)
+				processedForPath[recipe.Ingredient2] = true
+			}
+		}
+	}
+
+	finalPath := make([]Recipe, 0, path.Len())
+	for e := path.Front(); e != nil; e = e.Next() {
+		finalPath = append(finalPath, e.Value.(Recipe))
+	}
+	return finalPath
+}
+
+func getRecipes(a, b string) []Recipe {
+	all := GetAlchemyGraph()
+	recipes := all[a]
+	var result []Recipe
+	for _, r := range recipes {
+		if (r.Ingredient1 == a && r.Ingredient2 == b) || (r.Ingredient1 == b && r.Ingredient2 == a) {
+			result = append(result, r)
+		}
+	}
+	return result
+}
 
 // generatePathIdentifier (fungsi ini tetap sama)
 func generatePathIdentifier(path []Recipe) string {
@@ -109,7 +238,6 @@ func generatePathIdentifier(path []Recipe) string {
 }
 
 // FindMultiplePathsBFS mencari sejumlah 'maxRecipes' jalur resep BERBEDA ke targetElement menggunakan BFS.
-// Revisi 3: Melonggarkan kondisi berhenti agar bisa menemukan path sedikit lebih panjang.
 func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int, error) {
 	fmt.Printf("Mencari %d jalur BFS BERBEDA ke: %s (Revisi 3 - Looser Stop)\n", maxRecipes, targetElement)
 
@@ -226,56 +354,4 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 	}
 
 	return allFoundPaths, nodesVisitedCount, nil
-}
-
-// reconstructPathRevised (fungsi ini tetap sama)
-func reconstructPathRevised(parent map[string]Recipe, target string) []Recipe {
-	path := list.New()
-	queue := list.New()
-	queue.PushBack(target)
-	processedForPath := make(map[string]bool)
-	processedForPath[target] = true
-
-	for queue.Len() > 0 {
-		queueEl := queue.Front()
-		current := queueEl.Value.(string)
-		queue.Remove(queueEl)
-
-		recipe, exists := parent[current]
-		if !exists {
-			continue
-		}
-
-		path.PushFront(recipe)
-
-		if _, processed := processedForPath[recipe.Ingredient1]; !processed {
-			if _, parentExists := parent[recipe.Ingredient1]; parentExists || isBaseElement(recipe.Ingredient1) {
-				queue.PushBack(recipe.Ingredient1)
-				processedForPath[recipe.Ingredient1] = true
-			}
-		}
-		if _, processed := processedForPath[recipe.Ingredient2]; !processed {
-			if _, parentExists := parent[recipe.Ingredient2]; parentExists || isBaseElement(recipe.Ingredient2) {
-				queue.PushBack(recipe.Ingredient2)
-				processedForPath[recipe.Ingredient2] = true
-			}
-		}
-	}
-
-	finalPath := make([]Recipe, 0, path.Len())
-	for e := path.Front(); e != nil; e = e.Next() {
-		finalPath = append(finalPath, e.Value.(Recipe))
-	}
-	return finalPath
-}
-
-// isBaseElement (fungsi ini tetap sama)
-func isBaseElement(name string) bool {
-	baseElements := []string{"Air", "Earth", "Fire", "Water"}
-	for _, base := range baseElements {
-		if name == base {
-			return true
-		}
-	}
-	return false
 }
