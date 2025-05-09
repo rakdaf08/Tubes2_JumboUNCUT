@@ -1,42 +1,204 @@
-#root {
-  max-width: 1280px;
+/* untuk container utama aplikasi */
+.App-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #000000;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* untuk styling logo utama yang akan dianimasikan */
+.main-logo {
+  position: absolute;
+  transition: top 1s ease-in-out, left 1s ease-in-out, transform 1s ease-in-out,
+              max-width 1s ease-in-out, max-height 1s ease-in-out;
+  z-index: 10;
+  height: auto;
+}
+
+/* untuk posisi awal logo di tengah */
+.main-logo.center {
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  max-width: 70vw;
+  max-height: 35vh;
+}
+
+/* untuk posisi akhir logo di kiri atas */
+.main-logo.topLeft {
+  top: 20px;
+  left: 20px;
+  transform: translate(0, 0) scale(0.70);
+}
+
+/* untuk konten Splash Screen Awal */
+.splash-initial-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80%;
+  z-index: 5;
+}
+
+/* untuk teks 'Click To Start' pada splash screen */
+.splash-start-text {
+  max-width: 15%;
+  max-height: 15vh;
+  height: auto;
+  margin-top: 30vh;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+  animation: blinkAnimation 1.5s infinite;
+}
+
+/* untuk menyembunyikan teks 'Click To Start' pada state tertentu */
+.App-container.current-state-logoMoving .splash-start-text,
+.App-container.current-state-sansAppearing .splash-start-text,
+.App-container.current-state-sansBobbing .splash-start-text,
+.App-container.current-state-searchPage .splash-start-text {
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}
+
+/* untuk styling gambar Sans */
+.sans-image {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  max-width: 400px;
+  width: 40vw;
+  max-height: 60vh;
+  height: auto;
+  opacity: 0;
+  z-index: 1;
+}
+
+/* untuk memicu animasi muncul Sans pada state tertentu */
+.App-container.current-state-sansAppearing .sans-image,
+.App-container.current-state-sansBobbing .sans-image {
+  animation-name: fadeInSans;
+  animation-duration: 0.5s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* untuk memicu animasi bobbing setelah Sans muncul */
+.sans-image.bobbing {
+  animation: fadeInSans 0.5s ease-in-out forwards,
+             bobbingAnimation 2s ease-in-out 0.5s infinite;
+}
+
+/* untuk wrapper SearchPage */
+.search-page-wrapper {
+  width: 100%;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 20px;
+  padding-top: 100px;
+  box-sizing: border-box;
+  opacity: 0;
+  position: relative;
+  z-index: 1;
+  transition: opacity 0.5s ease-in-out; /* Digabung dari duplikat */
+}
+
+/* untuk menampilkan SearchPage pada state tertentu */
+.App-container.current-state-searchPage .search-page-wrapper {
+  opacity: 1;
+}
+
+/* untuk styling Kotak Dialog */
+.dialog-box {
+  position: absolute;
+  top: 54%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70vw;
+  max-width: 1500px;
+  min-height: 200px;
+  background-color: #000000;
+  border: 2px solid #ffffff;
+  border-radius: 5px;
+  padding: 0px 20px;
+  box-sizing: border-box;
+  font-size: 40px;
+  color: #ffffff;
+  opacity: 0;
+  z-index: 6;
+  animation-fill-mode: forwards;
+}
+
+/* untuk animasi muncul untuk dialog box pada state tertentu */
+.App-container.current-state-sansAppearing .dialog-box,
+.App-container.current-state-sansBobbing .dialog-box {
+  animation-name: fadeInDialogSmooth;
+  animation-duration: 0.6s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+  animation-delay: 0.3s;
+}
+
+/* untuk teks di dalam dialog box */
+.dialog-text {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
+/* untuk animasi fade-in Sans */
+@keyframes fadeInSans {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* untuk animasi bobbing */
+@keyframes bobbingAnimation {
+  0% {
+    transform: translate(-50%, -50%); /* Disesuaikan dari duplikat agar konsisten */
+  }
+  50% {
+    /* transform: translate(-50%, -100%); */ /* Versi sebelumnya memiliki -50% untuk naik, ini dikoreksi agar bobbingnya naik turun dari -100% */
+    transform: translate(-50%, calc(-100% - 8px)); /* Contoh naik sedikit */
+  }
+  100% {
+    transform: translate(-50%, -50%);
   }
 }
 
-.card {
-  padding: 2em;
+/* untuk animasi kelap-kelip */
+@keyframes blinkAnimation {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
 }
 
-.read-the-docs {
-  color: #888;
+/* untuk animasi fade-in dialog box */
+@keyframes fadeInDialogSmooth {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 15px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
