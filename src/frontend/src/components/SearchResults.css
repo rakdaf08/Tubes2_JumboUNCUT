@@ -1,0 +1,5 @@
+.search-results-container .results-title { /* Atau hanya .results-title jika sudah cukup spesifik */
+  margin-top: 0;
+  /* Anda mungkin juga ingin mengatur margin-bottom jika perlu */
+  /* margin-bottom: 10px; */
+}

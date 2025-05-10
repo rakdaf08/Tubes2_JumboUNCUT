@@ -109,13 +109,12 @@ function SearchForm({ onSearchSubmit, isLoading }) {
             onChange={(e) => setMode(e.target.value)}
             className="radio-input"
           />
+          
           <label htmlFor="mode-multiple" className="radio-label"> {/* htmlFor merujuk ke ID input */}
             Multiple
           </label>
-        </div>
-        {mode === 'multiple' && (
-          <div className="max-recipes-group">
-            <label htmlFor="maxRecipes" className="max-recipes-label">Jumlah Resep:</label>
+
+          {mode === 'multiple' &&(<div className="max-recipes-group">
             <input
               type="number"
               id="maxRecipes"
@@ -125,16 +124,21 @@ function SearchForm({ onSearchSubmit, isLoading }) {
               className="max-recipes-input"
             />
           </div>
-        )}
-      </div>
+          )}
 
-      <button
+                          <button
         type="submit"
         disabled={isLoading}
         className="submit-button"
       >
+        
+
         {isLoading ? 'Mencari...' : 'Cari Resep'}
       </button>
+
+
+        </div>
+      </div>
     </form>
   );
 }
