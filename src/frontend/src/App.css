@@ -3,14 +3,15 @@
 /* Container utama aplikasi */
 .App-container {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100vh; /* Konteks tinggi utama */
   background-color: #000000;
-  position: relative;
+  position: relative; /* Konteks posisi untuk elemen absolut di dalamnya */
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  transition: padding-top 0.5s ease-in-out;
 }
 
 /* Styling untuk logo utama yang akan dianimasikan */
@@ -22,7 +23,6 @@
   height: auto;
 }
 
-/* Posisi awal logo di tengah */
 .main-logo.center {
   top: 40%;
   left: 50%;
@@ -31,7 +31,6 @@
   max-height: 35vh;
 }
 
-/* Posisi akhir logo di kiri atas */
 .main-logo.topLeft {
   top: 20px;
   left: 20px;
@@ -49,7 +48,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 80%; /* Mungkin ini bisa 100% agar area klik lebih luas */
+  height: 100%;
   z-index: 5;
 }
 
@@ -59,13 +58,14 @@
   height: auto;
   margin-top: 30vh;
   opacity: 1;
-  transition: opacity 0.3s ease-out; /* Fade out lebih cepat */
+  transition: opacity 0.3s ease-out;
   animation: blinkAnimation 1.5s infinite;
 }
 
-/* Menyembunyikan .splash-start-text saat logo bergerak */
-.App-container.current-state-transitioningMain .splash-start-text,
-.App-container.current-state-contentActive .splash-start-text { /* Pastikan tetap hilang */
+.App-container.current-state-logoMoving .splash-start-text,
+.App-container.current-state-sansAppearing .splash-start-text,
+.App-container.current-state-contentReady .splash-start-text,
+.App-container.results-view-active .splash-start-text {
   opacity: 0;
   pointer-events: none;
   animation: none;
@@ -74,117 +74,213 @@
 /* Styling untuk gambar Sans */
 .sans-image {
   position: absolute;
-  top: 30%; /* Titik referensi tengah Sans */
+  /* Pindahkan Sans lebih ke atas */
+  top:35%; /* Misalnya, 20% dari atas .App-container */
   left: 50%;
+  transform: translate(-50%, -50%); /* Memusatkan elemen pada titik top/left */
+  opacity: 0;
   max-width: 400px;
   width: 40vw;
   max-height: 60vh;
   height: auto;
-  opacity: 0; /* Awalnya transparan */
-  z-index: 1; /* Di atas dialog jika perlu, atau sesuaikan */
-  /* Hapus transform awal dari sini jika dihandle oleh keyframes */
+  z-index: 1;
+  transition: opacity 0.5s ease-out 0.2s,
+              max-width 0.5s ease-in-out, width 0.5s ease-in-out,
+              transform 0.5s ease-in-out,
+              position 0s linear 0.5s,
+              top 0.5s ease-in-out, left 0.5s ease-in-out,
+              margin-bottom 0.5s ease-in-out;
 }
 
-/* Kelas 'visible' untuk memicu fadeInSans */
-.sans-image.visible {
-  animation-name: fadeInSans;
-  animation-duration: 0.5s;
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: forwards;
-  animation-delay: 0.2s; /* Sans muncul sedikit setelah logo mulai bergerak */
-}
-
-/* Kelas 'bobbing' untuk memulai animasi naik-turun SETELAH fadeInSans selesai */
-.sans-image.bobbing {
-  /* Pastikan fadeInSans sudah selesai sebelum bobbing dimulai jika digabung */
-  /* Cara ini akan menjalankan fadeInSans, LALU bobbing */
-  animation: fadeInSans 0.5s ease-in-out 0.2s forwards, /* Delay tetap ada */
-             bobbingAnimation 2s ease-in-out 0.7s infinite; /* Delay bobbing = delay fadeIn + durasi fadeIn */
+.sans-image.visible:not(.results-mode) {
+  opacity: 1;
+  animation: sansBobbingInitial 2s ease-in-out 0.2s infinite;
 }
 
 /* Styling untuk Kotak Dialog */
 .dialog-box {
   position: absolute;
-  top: 49%; /* Titik referensi atas dialog */
+  /* Pindahkan Dialog Box lebih ke bawah untuk memberi ruang bagi Sans */
+  top: 55%; /* Misalnya, 55% dari atas .App-container */
   left: 50%;
-  transform: translateX(-50%); /* Hanya pusatkan horizontal */
+  transform: translateX(-50%) translateY(20px); /* translateY awal untuk animasi naik */
+  opacity: 0;
   width: 70vw;
-  max-width: 2000px; /* Disesuaikan agar tidak terlalu lebar */
-  min-height: 200px; /* Disesuaikan */
+  max-width: 2000px;
+  min-height: 200px; /* Pastikan ada tinggi minimal */
   background-color: #000000;
   border: 2px solid #ffffff;
   border-radius: 5px;
   padding: 15px 25px;
   box-sizing: border-box;
   color: #ffffff;
-  opacity: 0; /* Awalnya transparan */
-  z-index: 7; /* Di bawah Sans jika Sans z-index 8 */
-  animation-fill-mode: forwards;
+  z-index: 7;
+  transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s,
+              width 0.5s ease-in-out, max-width 0.5s ease-in-out, min-height 0.5s ease-in-out,
+              position 0s linear 0.5s,
+              top 0.5s ease-in-out, left 0.5s ease-in-out,
+              margin-bottom 0.5s ease-in-out;
 }
 
-/* Kelas 'visible' untuk memicu fadeInDialogSmooth */
 .dialog-box.visible {
-  animation-name: fadeInDialogSmooth;
-  animation-duration: 0.6s;
-  animation-timing-function: ease-out;
-  animation-fill-mode: forwards;
-  animation-delay: 0.4s; /* Muncul sedikit setelah Sans mulai muncul */
+  opacity: 1;
+  transform: translateX(-50%) translateY(0); /* Kembali ke posisi Y normal (relatif terhadap top: 55%) */
 }
 
-.dialog-text { /* Anda menamakannya .dialog-text di JSX, bukan .dialog-box p */
+.dialog-text {
   margin-top: 20px;
   margin-left: 10px;
-  font-size: clamp(40px, 2.2vw, 22px); /* Sedikit penyesuaian ukuran font */
+  font-size: clamp(20px, 2.2vw, 22px);
   line-height: 1.4;
-  /* font-family: 'Pixelify Sans', Tektur, sans-serif; (atur di body atau index.css) */
+  transition: font-size 0.5s ease-in-out;
+  white-space: pre-wrap;
+  position: relative;
 }
 
-/* Wrapper untuk SearchPage */
-.search-page-wrapper {
+.typing-cursor-char {
+  animation: blinkCursor 0.7s infinite;
+  font-weight: normal;
+  color: #ffffff;
+  margin-left: 1px;
+}
+
+/* Wrapper untuk SearchForm di App.jsx (saat ini tidak digunakan jika SearchForm dikomentari) */
+.search-form-wrapper {
   width: 100%;
-  max-width: 800px; /* Sesuaikan jika perlu */
-  margin: 0 auto; /* Untuk pemusatan horizontal */
-  /* Atur padding-top atau margin-top untuk jarak dari elemen di atas (dialog box) */
-  /* Ini akan bergantung pada posisi akhir dialog box */
-  padding-top: 20px; /* Jarak awal dari elemen di atasnya jika dialog tidak absolut */
-  margin-top: calc(54% + 100px + 20px - 50vh); /* INI PERLU DIHITUNG ULANG DAN DISESUAIKAN agar di bawah dialog */
-  /* Cara yang lebih baik adalah menggunakan flex/grid pada parent jika memungkinkan, atau posisi absolut */
+  max-width: 800px;
+  margin: 20px auto 0 auto;
+  padding-top: 0;
   box-sizing: border-box;
   opacity: 0;
-  position: relative; /* Agar mengikuti flow setelah elemen absolut di atasnya (jika parent bukan flex/grid) */
-  z-index: 1;
-  transition: opacity 0.5s ease-in-out; /* Delay agar muncul setelah Sans dan dialog */
+  position: relative;
+  z-index: 6;
+  transition: opacity 0.5s ease-in-out 1s,
+              transform 0.5s ease-in-out,
+              width 0.5s ease-in-out, max-width 0.5s ease-in-out,
+              margin 0.5s ease-in-out;
 }
 
-/* Untuk menampilkan SearchPage wrapper */
-.search-page-wrapper.visible {
+.App-container.current-state-contentReady .search-form-wrapper,
+.App-container.results-view-active .search-form-wrapper {
   opacity: 1;
 }
 
+/* Tata Letak untuk Results View Active */
+.App-container.results-view-active {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding-top: 70px;
+  overflow: hidden;
+}
 
-/* Keyframes (pastikan hanya ada satu definisi untuk masing-masing) */
-@keyframes fadeInSans {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
+.left-panel {
+  width: 100%;
+  /* height: 100%; */ /* Biarkan tinggi ditentukan oleh .App-container atau kontennya */
+  /* position: relative; */ /* DIHAPUS untuk state awal agar tidak menjadi konteks posisi Sans/Dialog */
+  transition: width 0.5s ease-in-out, padding 0.5s ease-in-out, height 0.5s ease-in-out;
+  z-index: 5;
+}
+
+/* Saat results view active, .left-panel menjadi flex container untuk isinya */
+.App-container.results-view-active .left-panel {
+  width: 33.33%;
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative; /* Menjadi konteks posisi untuk elemen di dalamnya jika diperlukan */
+  border-right: 2px solid #333;
+  box-sizing: border-box;
+}
+
+.right-panel {
+  width: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: width 0.5s ease-in-out, opacity 0.5s ease-in-out 0.1s, visibility 0s linear 0.6s;
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  padding: 15px;
+  box-sizing: border-box;
+  background-color: #0a0a0a;
+}
+
+.App-container.results-view-active .right-panel {
+  width: 66.67%;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s, 0.1s, 0s;
+}
+
+.App-container.results-view-active .main-logo.results-mode {
+  transform: translate(0, 0) scale(0.55);
+}
+
+.App-container.results-view-active .sans-image.results-mode {
+  position: relative;
+  top: auto;
+  left: auto;
+  animation: bobbingAnimation 2s ease-in-out 0s infinite;
+  transform: none;
+  max-width: 120px;
+  width: 60%;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  opacity: 1;
+  transition: max-width 0.5s ease-in-out, width 0.5s ease-in-out, margin-bottom 0.5s ease-in-out, transform 0.5s ease-in-out, opacity 0.3s;
+}
+
+.App-container.results-view-active .dialog-box.results-mode {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 95%;
+  max-width: none;
+  min-height: auto;
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  opacity: 1;
+  transition: width 0.5s ease-in-out, max-width 0.5s ease-in-out, min-height 0.5s ease-in-out,
+              margin-bottom 0.5s ease-in-out, padding 0.5s ease-in-out, transform 0.5s ease-in-out, opacity 0.3s;
+}
+
+.App-container.results-view-active .dialog-box.results-mode .dialog-text {
+  font-size: clamp(14px, 1.5vw, 16px);
+  margin-top: 5px;
+  margin-left: 5px;
+}
+
+.App-container.results-view-active .search-form-wrapper.results-mode {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-top: 0;
+  opacity: 1;
+  position: relative;
+}
+
+
+/* Keyframes */
+@keyframes sansBobbingInitial {
+  0%   { transform: translate(-50%, -50%) translateY(0px); }
+  50%  { transform: translate(-50%, -50%) translateY(-8px); }
+  100% { transform: translate(-50%, -50%) translateY(0px); }
 }
 
 @keyframes bobbingAnimation {
-  0% {
-    /* Transformasi ini relatif terhadap posisi akhir fadeInSans */
-    transform: translate(-50%, -50%);
-  }
-  50% {
-    transform: translate(-50%, calc(-50% - 8px)); /* Naik 8px dari posisi tengahnya */
-  }
-  100% {
-    transform: translate(-50%, -50%);
-  }
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 @keyframes blinkAnimation {
@@ -193,13 +289,43 @@
   100% { opacity: 1; }
 }
 
-@keyframes fadeInDialogSmooth {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px); /* Mulai dari bawah */
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0); /* Ke posisi akhir */
-  }
+/* Scrollbar styling (opsional) */
+.left-panel::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.left-panel::-webkit-scrollbar-track,
+.right-panel::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 10px;
+}
+
+.left-panel::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 10px;
+}
+
+.left-panel::-webkit-scrollbar-thumb:hover,
+.right-panel::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.search-form-wrapper {
+  position: relative;
+  width: 80%;
+  max-width: 600px;
+  margin-left: 500px;
+  margin-right: auto;
+  /* PENTING: Sesuaikan nilai margin-top ini! */
+  /* Mulai dengan nilai besar untuk melihat efeknya, lalu kurangi. */
+  margin-top: 75vh; /* Misalnya, 70% dari tinggi viewport. Ini mungkin terlalu banyak atau kurang. */
+  /* Atau coba dengan piksel: */
+  /* margin-top: 500px; */
+  box-sizing: border-box;
+  opacity: 0;
+  z-index: 6;
+  transition: opacity 0.5s ease-in-out 1.2s;
+  /* border: 1px solid red; */
 }
