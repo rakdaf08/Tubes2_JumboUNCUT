@@ -86,7 +86,6 @@ function SearchForm({ onSearchSubmit, isLoading }) {
       </div>
 
       <div className="form-options-group mode-group">
-        <p className="options-title">Mode:</p>
         <div className="radio-group">
           {/* Opsi Shortest */}
           <input
