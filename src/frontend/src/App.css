@@ -83,7 +83,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0;
-  max-width: 350px; /* Batasan ukuran Sans */
+  max-width: 250px; /* Batasan ukuran Sans */
   width: 100vw;
    /* Batasan tinggi Sans */
   height: auto;
@@ -122,11 +122,11 @@
 .dialog-box {
   /* Tidak lagi position absolute, mengalir dalam .dialog-and-form-container */
   width: 100%; /* Mengisi lebar .dialog-and-form-container */
-  min-height: 200px; /* Tinggi minimal, bisa disesuaikan */
+  min-height: 150px; /* Tinggi minimal, bisa disesuaikan */
   background-color: #000000;
   border: 4px solid #ffffff;
   border-radius: 5px;
-  padding: 30px 30px;
+  padding:20px 25px;
   box-sizing: border-box;
   color: #ffffff;
   /* Opacity dan transform untuk animasi kemunculan dialog itu sendiri */
@@ -150,7 +150,7 @@
 .dialog-text {
   margin-top: 0; /* Hapus margin default p jika ada */
   margin-left: 0;
-  font-size: clamp(30px, 2vw, 20px); /* Ukuran font responsif */
+  font-size: clamp(26px, 2vw, 20px); /* Ukuran font responsif */
   line-height: 1.4;
   white-space: pre-wrap; /* Agar baris baru dari teks dihormati */
   position: relative; /* Untuk cursor */
@@ -245,6 +245,7 @@
 /* Penyesuaian elemen untuk Results Mode */
 .App-container.results-view-active .main-logo.results-mode {
   /* Posisi sudah diatur oleh .topLeft */
+  left: -2%;
   transform: translate(0, 0) scale(0.55); /* Mungkin perlu disesuaikan lagi */
 }
 
@@ -264,7 +265,7 @@
 .App-container.results-view-active .dialog-and-form-container.results-mode {
   position: static; /* Kembali ke alur normal di dalam .left-panel */
   transform: none;
-  width: 90%; /* Mengisi .left-panel */
+  width: 90%; /* Mengisi .left-panel 
   top: auto;
   left: auto;
   opacity: 1; /* Pastikan visible */
@@ -277,19 +278,19 @@
   min-height: auto; /* Biarkan tinggi menyesuaikan konten */
   margin-bottom: 10px; /* Jarak ke form jika form masih ada */
   height :200px;
-  padding: 30px 30px;
+  padding: 20px 25px;
   opacity: 1;
   transform: none;
 }
 
 .App-container.results-view-active .dialog-box.results-mode .dialog-text {
-  font-size: clamp(30px, 1.5vw, 16px); /* Font lebih kecil di panel */
+  font-size: clamp(24 px, 1.5vw, 16px); /* Font lebih kecil di panel */
 }
 
 .App-container.results-view-active .search-form-wrapper.results-mode {
   /* Style sudah diatur oleh .search-form-wrapper biasa dan parent */
   width: 100%;
-  margin-top: 0; /* Reset margin-top, jarak diatur oleh .dialog-box margin-bottom */
+  margin-top: 20px; /* Reset margin-top, jarak diatur oleh .dialog-box margin-bottom */
   opacity: 1;
   transform: none;
 }
