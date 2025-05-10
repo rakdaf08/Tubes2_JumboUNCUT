@@ -15,17 +15,17 @@ import (
 // --- Struct Definitions ---
 
 // Struct untuk menyimpan satu resep kombinasi (hanya teks)
-type Recipe struct {
-	Result      string `json:"result"`
-	Ingredient1 string `json:"ingredient1"`
-	Ingredient2 string `json:"ingredient2"`
-}
+// type Recipe struct {
+// 	Result      string `json:"result"`
+// 	Ingredient1 string `json:"ingredient1"`
+// 	Ingredient2 string `json:"ingredient2"`
+// }
 
-// Struct BARU untuk menyimpan pemetaan nama elemen ke URL gambar
-type ElementImage struct {
-	Name     string `json:"name"`     // Nama elemen
-	ImageURL string `json:"imageURL"` // URL Gambar (disimpan apa adanya)
-}
+// // Struct BARU untuk menyimpan pemetaan nama elemen ke URL gambar
+// type ElementImage struct {
+// 	Name     string `json:"name"`     // Nama elemen
+// 	ImageURL string `json:"imageURL"` // URL Gambar (disimpan apa adanya)
+// }
 
 // --- Konfigurasi ---
 
@@ -55,7 +55,7 @@ func getValidImageURL(imgTag *goquery.Selection) (string, bool) {
 
 
 // --- Fungsi Utama ---
-func main() {
+func RunScraping() {
 	// Validasi URL Target
 	if targetURL == "URL_WEBSITE_TARGET_ANDA_DI_SINI" {
 		log.Fatal("Error: Anda belum mengganti placeholder targetURL di dalam kode!")

@@ -10,11 +10,11 @@ import (
 )
 
 // Recipe struct (sama)
-type Recipe struct {
-	Result      string `json:"result"`
-	Ingredient1 string `json:"ingredient1"`
-	Ingredient2 string `json:"ingredient2"`
-}
+// type Recipe struct {
+// 	Result      string `json:"result"`
+// 	Ingredient1 string `json:"ingredient1"`
+// 	Ingredient2 string `json:"ingredient2"`
+// }
 
 func getRecipeID(r Recipe) string {
 	ings := []string{r.Ingredient1, r.Ingredient2}
@@ -22,7 +22,7 @@ func getRecipeID(r Recipe) string {
 	return fmt.Sprintf("%s+%s=>%s", ings[0], ings[1], r.Result)
 }
 
-func main() {
+func runFilter() {
 	baseDir := "data"
 	rawRecipeFile := filepath.Join(baseDir, "recipes_scraped.json")
 	filteredRecipeFile := filepath.Join(baseDir, "recipes_final_filtered.json")

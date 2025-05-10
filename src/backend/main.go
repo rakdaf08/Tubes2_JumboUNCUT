@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	RunScraping();
+	runFilter();
 	log.Println("=== MEMULAI SERVER BACKEND ===")
 	dataDirPath := "data"
 	err := InitData(dataDirPath) // Dari data.go
