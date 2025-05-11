@@ -36,6 +36,7 @@ func main() {
 	// --- Jalankan Server ---
 	port := "8080" // Port yang akan digunakan server
 	log.Printf("Server backend berjalan di http://localhost:%s\n", port)
+	log.Printf("Server frontend berjalan di http://localhost:3000\n")
 	err = http.ListenAndServe(":"+port, nil) // Jalankan server
 	if err != nil {
 		log.Fatalf("FATAL: Gagal menjalankan server: %v", err)
