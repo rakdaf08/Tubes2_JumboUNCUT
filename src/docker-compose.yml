@@ -32,8 +32,6 @@ services:
     networks:
       - alchemy-network
 
-    environment:
-      - VITE_API_BASE_URL=http://backend:8080
 # Mendefinisikan jaringan kustom agar kontainer bisa saling menemukan dengan nama layanannya
 networks:
   alchemy-network:
