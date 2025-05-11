@@ -11,30 +11,29 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	// sync tidak perlu di sini jika tidak digunakan secara langsung di file ini
 )
 
 // MultiSearchResponse struct untuk struktur respons JSON ke frontend
 type MultiSearchResponse struct {
-<<<<<<< HEAD
 	SearchTarget   string            `json:"searchTarget"`
 	Algorithm      string            `json:"algorithm"`
 	Mode           string            `json:"mode"`
-	PathFound      bool                `json:"pathFound"`
-	Path           []Recipe            `json:"path,omitempty"`        // Untuk mode shortest
-	Paths          [][]Recipe          `json:"paths,omitempty"`       // Untuk mode multiple
-	ImageURLs      map[string]string   `json:"imageURLs,omitempty"` // URL gambar untuk elemen yang relevan
-	NodesVisited   int                 `json:"nodesVisited"`
-	DurationMillis int64               `json:"durationMillis"`
-	Error          string              `json:"error,omitempty"`       // Pesan error jika ada
->>>>>>> f679aa63d64a2e91d7d2b11dbaee63308e058aa9
+	MaxRecipes     int               `json:"maxRecipes,omitempty"` // Hanya ada jika mode multiple
+	PathFound      bool              `json:"pathFound"`
+	Path           []Recipe          `json:"path,omitempty"`      // Untuk mode shortest
+	Paths          [][]Recipe        `json:"paths,omitempty"`     // Untuk mode multiple
+	ImageURLs      map[string]string `json:"imageURLs,omitempty"` // URL gambar untuk elemen yang relevan
+	NodesVisited   int               `json:"nodesVisited"`
+	DurationMillis int64             `json:"durationMillis"`
+	Error          string            `json:"error,omitempty"` // Pesan error jika ada
 }
 
 // imageHandler berfungsi sebagai proxy untuk mengambil gambar elemen dari URL aslinya.
+// Ini membantu menghindari masalah CORS di frontend.
 func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// Set CORS headers agar frontend bisa mengakses
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Izinkan akses dari origin manapun
+	w.Header().Set("Access-Control-Allow-Origin", "*")             // Izinkan akses dari origin manapun
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Header yang diizinkan
 
 	// Hanya izinkan metode GET

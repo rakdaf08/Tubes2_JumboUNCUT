@@ -9,20 +9,13 @@ import (
 	"sort"
 )
 
-// Recipe struct (sama)
-type Recipe struct {
-	Result      string `json:"result"`
-	Ingredient1 string `json:"ingredient1"`
-	Ingredient2 string `json:"ingredient2"`
-}
-
 func getRecipeID(r Recipe) string {
 	ings := []string{r.Ingredient1, r.Ingredient2}
 	sort.Strings(ings)
 	return fmt.Sprintf("%s+%s=>%s", ings[0], ings[1], r.Result)
 }
 
-func main() {
+func runFilter() {
 	baseDir := "data"
 	rawRecipeFile := filepath.Join(baseDir, "recipes_scraped.json")
 	filteredRecipeFile := filepath.Join(baseDir, "recipes_final_filtered.json")
@@ -55,7 +48,6 @@ func main() {
 		initialElementsSet[recipe.Ingredient2] = true
 	}
 	fmt.Printf("Jumlah elemen unik awal (termasuk dasar): %d\n", len(initialElementsSet))
-
 
 	allRemovedRecipesTracker := make(map[string]string)
 
@@ -100,16 +92,16 @@ func main() {
 				allRemovedRecipesTracker[getRecipeID(r)] = fmt.Sprintf("Tidak tercapai (Putaran Finalisasi %d)", finalIteration)
 			}
 		}
-		
+
 		tiersInLoop, _ := calculateElementTiers(makeableInLoop, baseElements)
-		
+
 		currentIterationRecipes, removedInTierPass := filterByTierLogic(makeableInLoop, tiersInLoop)
 		for _, r := range removedInTierPass {
 			tierR, _ := tiersInLoop[r.Result]
 			tierI1, _ := tiersInLoop[r.Ingredient1]
 			tierI2, _ := tiersInLoop[r.Ingredient2]
 			reason := fmt.Sprintf("Tier tidak valid (Putaran Finalisasi %d - H:%d, B1:%d, B2:%d)",
-				 finalIteration, tierR, tierI1, tierI2)
+				finalIteration, tierR, tierI1, tierI2)
 			if _, exists := allRemovedRecipesTracker[getRecipeID(r)]; !exists {
 				allRemovedRecipesTracker[getRecipeID(r)] = reason
 			}
@@ -122,8 +114,8 @@ func main() {
 		fmt.Printf("  Setelah putaran %d finalisasi, tersisa %d resep.\n", finalIteration, len(currentIterationRecipes))
 	}
 	if finalIteration >= maxFinalIterations && len(currentIterationRecipes) != previousRecipeCount {
-	    fmt.Println("Peringatan: Finalisasi filter mencapai batas iterasi maksimum sebelum konvergen.")
-    }
+		fmt.Println("Peringatan: Finalisasi filter mencapai batas iterasi maksimum sebelum konvergen.")
+	}
 	finalValidRecipes := currentIterationRecipes
 
 	if len(allRemovedRecipesTracker) > 0 {
@@ -170,7 +162,6 @@ func main() {
 	}
 	// --- AKHIR TAMBAHAN ---
 
-
 	filteredBytes, err := json.MarshalIndent(finalValidRecipes, "", "  ")
 	if err != nil {
 		fmt.Printf("Error marshal JSON resep terfilter akhir: %v\n", err)
@@ -191,23 +182,27 @@ func filterUnmakeablePaths(recipesToFilter []Recipe, baseElements []string) ([]R
 	copy(currentRecipes, recipesToFilter)
 	var removedInThisCall []Recipe
 
-	initialRecipeIDs := make(map[string]Recipe) 
-    for _, r := range recipesToFilter {
-        initialRecipeIDs[getRecipeID(r)] = r
-    }
+	initialRecipeIDs := make(map[string]Recipe)
+	for _, r := range recipesToFilter {
+		initialRecipeIDs[getRecipeID(r)] = r
+	}
 
 	iteration := 0
 	for {
 		iteration++
 		previousRecipeCount := len(currentRecipes)
 		makeableElements := make(map[string]bool)
-		for _, base := range baseElements { makeableElements[base] = true }
+		for _, base := range baseElements {
+			makeableElements[base] = true
+		}
 
 		propagationPass := 0
 		for {
 			propagationPass++
 			madeChangeThisPass := false
-			if len(currentRecipes) == 0 && propagationPass > 1 { break }
+			if len(currentRecipes) == 0 && propagationPass > 1 {
+				break
+			}
 
 			for _, recipe := range currentRecipes {
 				if makeableElements[recipe.Ingredient1] && makeableElements[recipe.Ingredient2] {
@@ -217,7 +212,9 @@ func filterUnmakeablePaths(recipesToFilter []Recipe, baseElements []string) ([]R
 					}
 				}
 			}
-			if !madeChangeThisPass || propagationPass > len(recipesToFilter)+len(baseElements)+10 { break }
+			if !madeChangeThisPass || propagationPass > len(recipesToFilter)+len(baseElements)+10 {
+				break
+			}
 		}
 
 		var nextValidRecipes []Recipe
@@ -228,26 +225,31 @@ func filterUnmakeablePaths(recipesToFilter []Recipe, baseElements []string) ([]R
 		}
 		currentRecipes = nextValidRecipes
 
-		if len(currentRecipes) == previousRecipeCount { break }
-		if iteration > 30 { fmt.Println("    Peringatan: Filter Ketercapaian melebihi batas iterasi (30)."); break; }
+		if len(currentRecipes) == previousRecipeCount {
+			break
+		}
+		if iteration > 30 {
+			fmt.Println("    Peringatan: Filter Ketercapaian melebihi batas iterasi (30).")
+			break
+		}
 	}
-    
-    finalValidRecipeIDs := make(map[string]bool)
-    for _, r := range currentRecipes {
-        finalValidRecipeIDs[getRecipeID(r)] = true
-    }
-    for id, originalRecipe := range initialRecipeIDs {
-        if !finalValidRecipeIDs[id] {
-            removedInThisCall = append(removedInThisCall, originalRecipe)
-        }
-    }
+
+	finalValidRecipeIDs := make(map[string]bool)
+	for _, r := range currentRecipes {
+		finalValidRecipeIDs[getRecipeID(r)] = true
+	}
+	for id, originalRecipe := range initialRecipeIDs {
+		if !finalValidRecipeIDs[id] {
+			removedInThisCall = append(removedInThisCall, originalRecipe)
+		}
+	}
 	return currentRecipes, removedInThisCall
 }
 
 // calculateElementTiers (sama seperti versi sebelumnya)
 func calculateElementTiers(recipesForTierCalc []Recipe, baseElements []string) (map[string]int, map[string]bool) {
 	elementTiers := make(map[string]int)
-	allInvolvedElements := make(map[string]bool) 
+	allInvolvedElements := make(map[string]bool)
 
 	for _, base := range baseElements {
 		elementTiers[base] = 0
@@ -265,9 +267,11 @@ func calculateElementTiers(recipesForTierCalc []Recipe, baseElements []string) (
 	if len(recipesForTierCalc) == 0 {
 		return elementTiers, allInvolvedElements
 	}
-	
-	maxTierIterations := len(allInvolvedElements) + 10 
-	if maxTierIterations < 50 { maxTierIterations = 50 }
+
+	maxTierIterations := len(allInvolvedElements) + 10
+	if maxTierIterations < 50 {
+		maxTierIterations = 50
+	}
 
 	for iter := 0; iter < maxTierIterations; iter++ {
 		changedInThisIteration := false
@@ -275,7 +279,7 @@ func calculateElementTiers(recipesForTierCalc []Recipe, baseElements []string) (
 			if isBase(el, baseElements) {
 				continue
 			}
-			minTierForEl := -1 
+			minTierForEl := -1
 			if recipes, ok := recipesByResult[el]; ok {
 				for _, recipe := range recipes {
 					tierIng1, ing1HasTier := elementTiers[recipe.Ingredient1]
@@ -299,11 +303,11 @@ func calculateElementTiers(recipesForTierCalc []Recipe, baseElements []string) (
 		if !changedInThisIteration {
 			break
 		}
-        if iter == maxTierIterations -1 {
-             fmt.Printf("  Peringatan: Perhitungan tier mungkin mencapai batas iterasi kalkulasi (%d).\n", maxTierIterations)
-        }
+		if iter == maxTierIterations-1 {
+			fmt.Printf("  Peringatan: Perhitungan tier mungkin mencapai batas iterasi kalkulasi (%d).\n", maxTierIterations)
+		}
 	}
-    
+
 	defaultHighTier := len(recipesForTierCalc) + 2
 	for el := range allInvolvedElements {
 		if _, hasTier := elementTiers[el]; !hasTier {
@@ -317,18 +321,28 @@ func calculateElementTiers(recipesForTierCalc []Recipe, baseElements []string) (
 func filterByTierLogic(recipes []Recipe, tiers map[string]int) ([]Recipe, []Recipe) {
 	var validRecipes []Recipe
 	var removedRecipes []Recipe
-	
+
 	maxKnownTier := 0
-    for _, t := range tiers { if t > maxKnownTier { maxKnownTier = t } }
-    defaultTierForUnknown := maxKnownTier + 2
+	for _, t := range tiers {
+		if t > maxKnownTier {
+			maxKnownTier = t
+		}
+	}
+	defaultTierForUnknown := maxKnownTier + 2
 
 	for _, recipe := range recipes {
 		tierResult, okR := tiers[recipe.Result]
-		if !okR { tierResult = defaultTierForUnknown }
+		if !okR {
+			tierResult = defaultTierForUnknown
+		}
 		tierIng1, okI1 := tiers[recipe.Ingredient1]
-		if !okI1 { tierIng1 = defaultTierForUnknown }
+		if !okI1 {
+			tierIng1 = defaultTierForUnknown
+		}
 		tierIng2, okI2 := tiers[recipe.Ingredient2]
-		if !okI2 { tierIng2 = defaultTierForUnknown }
+		if !okI2 {
+			tierIng2 = defaultTierForUnknown
+		}
 
 		if tierIng1 > tierResult || tierIng2 > tierResult {
 			removedRecipes = append(removedRecipes, recipe)
@@ -341,11 +355,17 @@ func filterByTierLogic(recipes []Recipe, tiers map[string]int) ([]Recipe, []Reci
 
 // isBase dan max (sama seperti versi sebelumnya)
 func isBase(elementName string, baseElements []string) bool {
-    for _, b := range baseElements { if b == elementName { return true } }
-    return false
+	for _, b := range baseElements {
+		if b == elementName {
+			return true
+		}
+	}
+	return false
 }
 
 func max(a, b int) int {
-	if a > b { return a }
+	if a > b {
+		return a
+	}
 	return b
 }
