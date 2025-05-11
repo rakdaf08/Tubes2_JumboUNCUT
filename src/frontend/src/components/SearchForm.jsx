@@ -3,7 +3,6 @@ import './SearchForm.css';
 
 function SearchForm({ onSearchSubmit, isLoading }) {
   const [target, setTarget] = useState('');
-  // Defaultkan ke bfs atau algoritma lain jika diinginkan
   const [algo, setAlgo] = useState('bfs');
   const [mode, setMode] = useState('shortest');
   const [maxRecipes, setMaxRecipes] = useState(1);
@@ -28,97 +27,118 @@ function SearchForm({ onSearchSubmit, isLoading }) {
 
   return (
     <form onSubmit={handleSubmit} className="search-form-container">
-      <div>
-        <label htmlFor="targetElement" className="form-label">Elemen Target:</label>
-        <input
-          type="text"
-          id="targetElement"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          placeholder="Contoh: Mud, Human, ..."
-          required
-          className="form-input"
-        />
-      </div>
+      <div className="search-and-algo-group">
 
-      <div className="form-options-group">
-        <p className="options-title">Algoritma:</p>
-        <div className="radio-group">
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="bfs"
-                checked={algo === 'bfs'}
-                onChange={(e) => setAlgo(e.target.value)}
-                className="radio-input"
-              /> BFS
+
+        <div className="form-options-group algo-group">
+          <div className="radio-group">
+                    <div className="target-input-group">
+          <input
+            type="text"
+            id="targetElement"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="Contoh: Mud, Human, ..."
+            required
+            className="form-input"
+          />
+        </div>
+            {/* Opsi BFS */}
+            <input
+              type="radio"
+              id="algo-bfs" // ID unik
+              value="bfs"
+              checked={algo === 'bfs'}
+              onChange={(e) => setAlgo(e.target.value)}
+              className="radio-input"
+            />
+            <label htmlFor="algo-bfs" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+              BFS
             </label>
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="dfs"
-                checked={algo === 'dfs'}
-                onChange={(e) => setAlgo(e.target.value)}
-                 className="radio-input"
-              /> DFS
+
+            {/* Opsi DFS */}
+            <input
+              type="radio"
+              id="algo-dfs" // ID unik
+              value="dfs"
+              checked={algo === 'dfs'}
+              onChange={(e) => setAlgo(e.target.value)}
+              className="radio-input"
+            />
+            <label htmlFor="algo-dfs" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+              DFS
             </label>
-            {/* Tombol Radio Baru untuk Bidirectional */}
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="bds" // Nilai untuk Bidirectional Search
-                checked={algo === 'bds'}
-                onChange={(e) => setAlgo(e.target.value)}
-                className="radio-input"
-              /> Bidirectional
+
+            {/* Opsi Bidirectional */}
+            <input
+              type="radio"
+              id="algo-bds" // ID unik
+              value="bds"
+              checked={algo === 'bds'}
+              onChange={(e) => setAlgo(e.target.value)}
+              className="radio-input"
+            />
+            <label htmlFor="algo-bds" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+              Bidirectional
             </label>
+          </div>
         </div>
       </div>
 
-      <div className="form-options-group">
-        <p className="options-title">Mode:</p>
+      <div className="form-options-group mode-group">
         <div className="radio-group">
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="shortest"
-                checked={mode === 'shortest'}
-                onChange={(e) => setMode(e.target.value)}
-                 className="radio-input"
-              /> Shortest
-            </label>
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="multiple"
-                checked={mode === 'multiple'}
-                onChange={(e) => setMode(e.target.value)}
-                 className="radio-input"
-              /> Multiple
-            </label>
-        </div>
-         {mode === 'multiple' && (
-            <div className="max-recipes-group">
-                 <label htmlFor="maxRecipes" className="max-recipes-label">Jumlah Resep:</label>
-                 <input
-                    type="number"
-                    id="maxRecipes"
-                    value={maxRecipes}
-                    onChange={(e) => setMaxRecipes(parseInt(e.target.value, 10) || 1)}
-                    min="1"
-                    className="max-recipes-input"
-                 />
-            </div>
-         )}
-      </div>
+          {/* Opsi Shortest */}
+          <input
+            type="radio"
+            id="mode-shortest" // ID unik
+            value="shortest"
+            checked={mode === 'shortest'}
+            onChange={(e) => setMode(e.target.value)}
+            className="radio-input"
+          />
+          <label htmlFor="mode-shortest" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+            Shortest
+          </label>
 
-      <button
+          {/* Opsi Multiple */}
+          <input
+            type="radio"
+            id="mode-multiple" // ID unik
+            value="multiple"
+            checked={mode === 'multiple'}
+            onChange={(e) => setMode(e.target.value)}
+            className="radio-input"
+          />
+          
+          <label htmlFor="mode-multiple" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+            Multiple
+          </label>
+
+          {mode === 'multiple' &&(<div className="max-recipes-group">
+            <input
+              type="number"
+              id="maxRecipes"
+              value={maxRecipes}
+              onChange={(e) => setMaxRecipes(parseInt(e.target.value, 10) || 1)}
+              min="1"
+              className="max-recipes-input"
+            />
+          </div>
+          )}
+
+                          <button
         type="submit"
         disabled={isLoading}
         className="submit-button"
       >
+        
+
         {isLoading ? 'Mencari...' : 'Cari Resep'}
       </button>
+
+
+        </div>
+      </div>
     </form>
   );
 }
