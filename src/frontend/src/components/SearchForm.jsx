@@ -1,80 +1,144 @@
-// src/frontend/src/components/SearchForm.jsx
 import React, { useState } from 'react';
+import './SearchForm.css';
 
-// Menerima prop 'onSearchSubmit' dari parent (SearchPage)
 function SearchForm({ onSearchSubmit, isLoading }) {
   const [target, setTarget] = useState('');
-  const [algo, setAlgo] = useState('bfs'); // Default BFS
-  const [mode, setMode] = useState('shortest'); // Default shortest
+  const [algo, setAlgo] = useState('bfs');
+  const [mode, setMode] = useState('shortest');
+  const [maxRecipes, setMaxRecipes] = useState(1);
 
   const handleSubmit = (event) => {
-    event.preventDefault(); // Mencegah refresh halaman standar form HTML
+    event.preventDefault();
     if (!target) {
       alert('Masukkan elemen target!');
       return;
     }
-    // Panggil fungsi yang di-pass dari parent dengan data dari state
-    onSearchSubmit({ target, algo, mode });
+    if (mode === 'multiple' && (!maxRecipes || maxRecipes <= 0)) {
+        alert('Masukkan jumlah resep minimal 1 untuk mode multiple!');
+        return;
+    }
+
+    const searchParams = { target, algo, mode };
+    if (mode === 'multiple') {
+        searchParams.max = maxRecipes;
+    }
+    onSearchSubmit(searchParams);
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="targetElement">Elemen Target:</label>
-        <input
-          type="text"
-          id="targetElement"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          placeholder="Contoh: Mud, Human, ..."
-          required
-        />
+    <form onSubmit={handleSubmit} className="search-form-container">
+      <div className="search-and-algo-group">
+
+
+        <div className="form-options-group algo-group">
+          <div className="radio-group">
+                    <div className="target-input-group">
+          <input
+            type="text"
+            id="targetElement"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="Contoh: Mud, Human, ..."
+            required
+            className="form-input"
+          />
+        </div>
+            {/* Opsi BFS */}
+            <input
+              type="radio"
+              id="algo-bfs" // ID unik
+              value="bfs"
+              checked={algo === 'bfs'}
+              onChange={(e) => setAlgo(e.target.value)}
+              className="radio-input"
+            />
+            <label htmlFor="algo-bfs" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+              BFS
+            </label>
+
+            {/* Opsi DFS */}
+            <input
+              type="radio"
+              id="algo-dfs" // ID unik
+              value="dfs"
+              checked={algo === 'dfs'}
+              onChange={(e) => setAlgo(e.target.value)}
+              className="radio-input"
+            />
+            <label htmlFor="algo-dfs" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+              DFS
+            </label>
+
+            {/* Opsi Bidirectional */}
+            <input
+              type="radio"
+              id="algo-bds" // ID unik
+              value="bds"
+              checked={algo === 'bds'}
+              onChange={(e) => setAlgo(e.target.value)}
+              className="radio-input"
+            />
+            <label htmlFor="algo-bds" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+              Bidirectional
+            </label>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <p>Algoritma:</p>
-        <label>
+      <div className="form-options-group mode-group">
+        <div className="radio-group">
+          {/* Opsi Shortest */}
           <input
             type="radio"
-            value="bfs"
-            checked={algo === 'bfs'}
-            onChange={(e) => setAlgo(e.target.value)}
-          /> BFS (Shortest Path)
-        </label>
-        <label>
-          <input
-            type="radio"
-            value="dfs"
-            checked={algo === 'dfs'}
-            onChange={(e) => setAlgo(e.target.value)}
-          /> DFS (A Path)
-        </label>
-      </div>
-
-      <div>
-        <p>Mode:</p>
-         <label>
-          <input
-            type="radio"
+            id="mode-shortest" // ID unik
             value="shortest"
             checked={mode === 'shortest'}
             onChange={(e) => setMode(e.target.value)}
-          /> Shortest
-        </label>
-         <label>
+            className="radio-input"
+          />
+          <label htmlFor="mode-shortest" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+            Shortest
+          </label>
+
+          {/* Opsi Multiple */}
           <input
             type="radio"
+            id="mode-multiple" // ID unik
             value="multiple"
             checked={mode === 'multiple'}
             onChange={(e) => setMode(e.target.value)}
-          /> Multiple (sementara pakai DFS)
-        </label>
-         {/* TODO: Tambah input 'max' jika mode == 'multiple' */}
-      </div>
+            className="radio-input"
+          />
+          
+          <label htmlFor="mode-multiple" className="radio-label"> {/* htmlFor merujuk ke ID input */}
+            Multiple
+          </label>
 
-      <button type="submit" disabled={isLoading}>
+          {mode === 'multiple' &&(<div className="max-recipes-group">
+            <input
+              type="number"
+              id="maxRecipes"
+              value={maxRecipes}
+              onChange={(e) => setMaxRecipes(parseInt(e.target.value, 10) || 1)}
+              min="1"
+              className="max-recipes-input"
+            />
+          </div>
+          )}
+
+                          <button
+        type="submit"
+        disabled={isLoading}
+        className="submit-button"
+      >
+        
+
         {isLoading ? 'Mencari...' : 'Cari Resep'}
       </button>
+
+
+        </div>
+      </div>
     </form>
   );
 }

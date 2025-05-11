@@ -4,6 +4,7 @@ package main // Package sama dengan main.go
 import (
 	"encoding/json"
 	"fmt"
+
 	// "log"
 	"os"
 	"path/filepath"
@@ -42,6 +43,8 @@ var (
 	// Berguna untuk validasi input atau fitur lain nanti
 	allElementNames map[string]bool
 
+	bfsPathCache = make(map[string][]Recipe)
+
 	// loadDataOnce digunakan untuk memastikan data hanya dimuat sekali
 	loadDataOnce sync.Once
 	loadDataErr  error // Menyimpan error jika terjadi saat loading
@@ -57,7 +60,7 @@ func InitData(dataDir string) error {
 		fmt.Println("Memulai pemuatan data awal dari direktori:", dataDir)
 
 		// Load resep
-		tempRecipes, err := loadRecipes(filepath.Join(dataDir, "recipes_scraped.json"))
+		tempRecipes, err := loadRecipes(filepath.Join(dataDir, "recipes_final_filtered.json"))
 		if err != nil {
 			loadDataErr = fmt.Errorf("gagal memuat resep: %w", err)
 			return // Hentikan jika resep gagal dimuat
