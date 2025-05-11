@@ -136,6 +136,48 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 1. Ambil Query Parameters
 	targetElement := strings.TrimSpace(r.URL.Query().Get("target"))
+
+	// Coba format yang berbeda untuk meningkatkan peluang menemukan elemen
+	// Format 1: Title case untuk setiap kata (Grilled Cheese)
+	titleCaseTarget := toTitleCase(targetElement)
+
+	// Format 2: Huruf pertama kapital saja (Grilled cheese)
+	firstCapTarget := ""
+	if len(targetElement) > 0 {
+		firstCapTarget = strings.ToUpper(string(targetElement[0]))
+		if len(targetElement) > 1 {
+			firstCapTarget += strings.ToLower(targetElement[1:])
+		}
+	}
+
+	// Format 3: Semua huruf kecil (grilled cheese)
+	lowerCaseTarget := strings.ToLower(targetElement)
+
+	// Format 4: Semua huruf kapital (GRILLED CHEESE)
+	upperCaseTarget := strings.ToUpper(targetElement)
+
+	// Coba semua format satu per satu
+	potentialTargets := []string{titleCaseTarget, firstCapTarget, targetElement, lowerCaseTarget, upperCaseTarget}
+
+	// Variabel untuk menyimpan target yang valid
+	validTarget := ""
+
+	// Cek satu per satu
+	for _, potTarget := range potentialTargets {
+		if IsElementExists(potTarget) {
+			validTarget = potTarget
+			break
+		}
+	}
+
+	// Jika tidak ada yang cocok, gunakan format title case
+	if validTarget == "" {
+		validTarget = titleCaseTarget
+	}
+
+	// Gunakan validTarget untuk pencarian
+	targetElement = validTarget
+
 	algo := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("algo")))
 	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
 	maxRecipesStr := r.URL.Query().Get("max")
@@ -318,6 +360,31 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error saat menulis JSON response: %v", writeErr)
 		// Tidak mengirim http.Error lagi karena header mungkin sudah terkirim
 	}
+}
+
+// Fungsi untuk mengubah format string menjadi Title Case
+// (huruf pertama tiap kata besar, sisanya kecil)
+// Ganti fungsi toTitleCase dengan fungsi ini
+func toTitleCase(input string) string {
+    // Pisahkan string menjadi kata-kata
+    words := strings.Fields(input)
+    result := make([]string, len(words))
+    
+    for i, word := range words {
+        if len(word) == 0 {
+            continue
+        }
+        // Untuk setiap kata, buat huruf pertama kapital dan sisanya kecil
+        firstChar := strings.ToUpper(string(word[0]))
+        restOfWord := ""
+        if len(word) > 1 {
+            restOfWord = strings.ToLower(word[1:])
+        }
+        result[i] = firstChar + restOfWord
+    }
+    
+    // Gabungkan kembali menjadi satu string
+    return strings.Join(result, " ")
 }
 
 // Helper function find (jika belum ada di package main atau tidak ter-ekspor)
