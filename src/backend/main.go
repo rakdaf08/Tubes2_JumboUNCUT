@@ -2,14 +2,22 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http" // Import net/http
 )
 
 func main() {
+	scrapeOnly := flag.Bool("scrapeonly", false, "Run scraping and filtering then exit")
+	flag.Parse() 
+
 	RunScraping();
 	runFilter();
+	if *scrapeOnly {
+		log.Println("Scraping dan filtering selesai (mode scrapeonly). Aplikasi akan keluar.")
+		return // Keluar setelah scraping dan filter jika flag aktif
+	}
 	log.Println("=== MEMULAI SERVER BACKEND ===")
 	dataDirPath := "data"
 	err := InitData(dataDirPath) // Dari data.go
