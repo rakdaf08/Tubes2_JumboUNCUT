@@ -266,8 +266,8 @@ func FindPathDFS(targetElement string) ([]Recipe, int, error) {
     }
     
     // Helper untuk menghapus resep duplikat dalam path
-    var removeDuplicateRecipes func(path []Recipe) []Recipe
-    removeDuplicateRecipes = func(path []Recipe) []Recipe {
+    //var removeDuplicateRecipes func(path []Recipe) []Recipe
+    var removeDuplicateRecipes = func(path []Recipe) []Recipe {
         seen := make(map[string]bool)
         unique := make([]Recipe, 0, len(path))
         
