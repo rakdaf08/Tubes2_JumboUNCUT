@@ -340,21 +340,6 @@ function SearchResults({ results, isLoading, error }) {
                  {results.error ? ` (Error: ${results.error})` : ''}
             </div>
        )}
-
-      {results && results.imageURLs && typeof results.imageURLs === 'object' && Object.keys(results.imageURLs).length > 0 && (
-           <details className="image-urls-details">
-              <summary className="image-urls-summary">Tampilkan/Sembunyikan URL Gambar Terkait ({Object.keys(results.imageURLs).length})</summary>
-              <ul className="image-urls-list">
-                {Object.entries(results.imageURLs).map(([name, urlPath]) => (
-                  <li key={name} className="image-urls-item">
-                    {urlPath ? <img src={`${API_BASE_URL}${urlPath}`} alt={name || ''} className="image-urls-image" onError={handleImageError}/> : <span className="img-placeholder-small"></span>}
-                    <span className="image-urls-name">{name || 'N/A'}:</span>
-                    <a href={`${API_BASE_URL}${urlPath}` || '#'} target="_blank" rel="noopener noreferrer" className="image-urls-link">{urlPath || 'N/A'}</a>
-                  </li>
-                ))}
-              </ul>
-           </details>
-        )}
     </div>
   );
 }
