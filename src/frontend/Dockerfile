@@ -6,7 +6,6 @@ RUN npm ci
 COPY . .
 
 # Atur variabel environment untuk build
-ENV VITE_API_BASE_URL="https://cozy-contentment-production-7b75.up.railway.app"
 
 # Build aplikasi
 RUN npm run build
