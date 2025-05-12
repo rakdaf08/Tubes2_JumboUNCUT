@@ -1,5 +1,5 @@
 // src/backend/data.go
-package main // Package sama dengan main.go
+package main
 
 import (
 	"encoding/json"
@@ -11,9 +11,6 @@ import (
 	"sync" // Import sync untuk Once
 )
 
-// --- Definisi Struct ---
-// Struct ini HARUS cocok dengan struktur JSON Anda
-
 type Recipe struct {
 	Result      string `json:"result"`
 	Ingredient1 string `json:"ingredient1"`
@@ -24,9 +21,6 @@ type ElementImage struct {
 	Name     string `json:"name"`
 	ImageURL string `json:"imageURL"`
 }
-
-// --- Variabel Global untuk menyimpan data yang sudah dimuat ---
-// Menggunakan map untuk akses cepat berdasarkan nama elemen
 
 var (
 	// recipeMap menyimpan semua resep untuk elemen hasil tertentu
