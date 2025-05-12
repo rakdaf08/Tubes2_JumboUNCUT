@@ -16,12 +16,13 @@ services:
     restart: unless-stopped # Kebijakan restart kontainer
     networks:
       - alchemy-network
-
   # Layanan untuk Frontend
   frontend:
     build:
       context: ./frontend # Path relatif ke direktori frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://backend:8080  # Untuk komunikasi antar container
     image: alchemy-frontend:latest # (Opsional tapi baik)
     container_name: alchemy_frontend_container
     ports:

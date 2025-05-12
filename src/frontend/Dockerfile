@@ -1,22 +1,29 @@
-# Tahap 1: Build aplikasi frontend ...
+# Tahap 1: Build aplikasi frontend
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Jika Anda menggunakan VITE_API_BASE_URL, set ke "" atau "/"
-ENV VITE_API_BASE_URL="" 
+
+# Atur variabel environment untuk build
+# Default ke Railway URL, tapi bisa dioveride dengan build arg
+ARG VITE_API_BASE_URL="https://cozy-contentment-production-7b75.up.railway.app"
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Build aplikasi
 RUN npm run build
 
-# Tahap 2: Sajikan aplikasi menggunakan server web ringan (Nginx)
+# (Debug opsional) Cek isi folder dist
+RUN ls -la /app/dist
+
+# Tahap 2: Sajikan hasil build dengan Nginx
 FROM nginx:1.27-alpine
 
+# Copy hasil build ke direktori default Nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# ---- TAMBAHKAN BARIS INI ----
-# Salin file konfigurasi Nginx kustom Anda
+# Copy konfigurasi nginx custom
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-# -----------------------------
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
