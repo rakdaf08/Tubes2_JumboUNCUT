@@ -25,6 +25,10 @@ func isBaseElement(name string) bool {
 	return baseElementMap[name]
 }
 
+var (
+	bfsPathCacheMutex sync.RWMutex
+)
+
 func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 	fmt.Printf("Finding BFS shortest path to: %s\n", targetElement)
 	graph := GetAlchemyGraph()
@@ -50,6 +54,7 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 	recipeParent := make(map[string]Recipe)
 	discovered := make(map[string]bool, 1000)
 	nodesVisitedCount := 0
+
 	depth := make(map[string]int)
 
 	sortedBaseElements := make([]string, len(baseElements))
@@ -75,7 +80,6 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 		if len(combinableRecipes) == 0 {
 			continue
 		}
-
 		discoveredElementsList := make([]string, 0, len(discovered))
 		for element := range discovered {
 			discoveredElementsList = append(discoveredElementsList, element)
@@ -88,8 +92,8 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 				continue
 			}
 			visited[pairKey] = true
-
 			recipes := getRecipes(currentElement, otherElement)
+
 			for _, recipe := range recipes {
 				result := recipe.Result
 
@@ -97,18 +101,15 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 					discovered[result] = true
 					recipeParent[result] = recipe
 					depth[result] = currentDepth + 1
-
 					if result == targetElement {
 						fmt.Printf("Target '%s' found!\n", targetElement)
-						path := buildRecipePath(recipeParent, targetElement, depth, 0)
-
+						path := buildRecipePath(recipeParent, targetElement, depth)
 						bfsPathCacheMutex.Lock()
 						bfsPathCache[targetElement] = path
 						bfsPathCacheMutex.Unlock()
 
 						return path, nodesVisitedCount, nil
 					}
-
 					if !elementVisited[result] {
 						elementVisited[result] = true
 						queue.PushBack(result)
@@ -130,12 +131,99 @@ func getPairKey(a, b string) string {
 	return a + ":" + b
 }
 
-func getUniqueRecipeKey(recipe Recipe) string {
-	ing1, ing2 := recipe.Ingredient1, recipe.Ingredient2
-	if ing1 > ing2 {
-		ing1, ing2 = ing2, ing1
+func buildRecipePath(recipeParent map[string]Recipe, target string, depth map[string]int) []Recipe {
+	dependencies := make(map[string][]string)
+	elementsNeeded := make(map[string]bool)
+
+	queue := list.New()
+	queue.PushBack(target)
+	elementsNeeded[target] = true
+
+	for queue.Len() > 0 {
+		current := queue.Remove(queue.Front()).(string)
+
+		if isBaseElement(current) {
+			continue
+		}
+
+		recipe, exists := recipeParent[current]
+		if !exists {
+			continue
+		}
+
+		ing1, ing2 := recipe.Ingredient1, recipe.Ingredient2
+		dependencies[ing1] = append(dependencies[ing1], current)
+		dependencies[ing2] = append(dependencies[ing2], current)
+
+		ingredients := []string{ing1, ing2}
+		sort.Strings(ingredients)
+
+		for _, ingredient := range ingredients {
+			if !elementsNeeded[ingredient] && !isBaseElement(ingredient) {
+				elementsNeeded[ingredient] = true
+				queue.PushBack(ingredient)
+			}
+		}
 	}
-	return fmt.Sprintf("%s+%s=>%s", ing1, ing2, recipe.Result)
+
+	var result []Recipe
+	available := make(map[string]bool)
+
+	sortedBaseElements := make([]string, len(baseElements))
+	copy(sortedBaseElements, baseElements)
+	sort.Strings(sortedBaseElements)
+	for _, base := range sortedBaseElements {
+		available[base] = true
+	}
+
+	remainingElements := len(elementsNeeded)
+	for remainingElements > 0 {
+		candidateElements := make([]string, 0, len(elementsNeeded))
+		for element := range elementsNeeded {
+			if !available[element] {
+				recipe, exists := recipeParent[element]
+				if !exists {
+					continue
+				}
+
+				if available[recipe.Ingredient1] && available[recipe.Ingredient2] {
+					candidateElements = append(candidateElements, element)
+				}
+			}
+		}
+
+		if len(candidateElements) == 0 {
+			break
+		}
+
+		sort.SliceStable(candidateElements, func(i, j int) bool {
+			if depth[candidateElements[i]] != depth[candidateElements[j]] {
+				return depth[candidateElements[i]] < depth[candidateElements[j]]
+			}
+
+			depCountI := len(dependencies[candidateElements[i]])
+			depCountJ := len(dependencies[candidateElements[j]])
+			if depCountI != depCountJ {
+				return depCountI > depCountJ
+			}
+
+			return candidateElements[i] < candidateElements[j]
+		})
+
+		bestElement := candidateElements[0]
+
+		recipe := recipeParent[bestElement]
+		result = append(result, recipe)
+		available[bestElement] = true
+		delete(elementsNeeded, bestElement)
+		remainingElements--
+
+		if available[target] {
+			break
+		}
+	}
+
+	return result
 }
 
 func getRecipes(a, b string) []Recipe {
@@ -168,6 +256,7 @@ func generatePathIdentifier(path []Recipe) string {
 	if len(path) == 0 {
 		return ""
 	}
+
 	resultToIngredients := make(map[string]string)
 
 	for _, r := range path {
@@ -185,6 +274,14 @@ func generatePathIdentifier(path []Recipe) string {
 
 	sort.Strings(parts)
 	return strings.Join(parts, "|")
+}
+
+func getUniqueRecipeKey(recipe Recipe) string {
+	ing1, ing2 := recipe.Ingredient1, recipe.Ingredient2
+	if ing1 > ing2 {
+		ing1, ing2 = ing2, ing1
+	}
+	return fmt.Sprintf("%s+%s=>%s", ing1, ing2, recipe.Result)
 }
 
 func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int, error) {
@@ -206,7 +303,15 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 		return nil, 0, fmt.Errorf("element '%s' not found in recipe database", targetElement)
 	}
 
+	fmt.Printf("Element '%s' can be created from %d unique ingredient combinations:\n",
+		targetElement, uniqueRecipeCombos)
+	for comboKey, recipe := range allCombinations {
+		fmt.Printf("  - %s + %s => %s (key: %s)\n",
+			recipe.Ingredient1, recipe.Ingredient2, recipe.Result, comboKey)
+	}
+
 	if uniqueRecipeCombos < maxRecipes {
+		fmt.Printf("Adjusting max paths to %d to match available combinations\n", uniqueRecipeCombos)
 		maxRecipes = uniqueRecipeCombos
 	}
 
@@ -223,7 +328,10 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 	for comboKey, recipe := range allCombinations {
 		remainingCombinations[comboKey] = recipe
 	}
+
+	var allFoundPaths [][]Recipe
 	addedPathIdentifiers := make(map[string]bool)
+	var mu sync.Mutex
 	nodesVisitedCount := atomic.Int32{}
 
 	var wg sync.WaitGroup
@@ -363,7 +471,6 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 			}
 		}
 
-		// Jika terget belum terpenuhi, mengeluarkan additioanlWorkers
 		if !shouldStop() {
 			additionalWorkers := runtime.NumCPU() * 2
 
@@ -373,7 +480,6 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 					defer wg.Done()
 
 					strategyVariant := workerID % 5
-
 					queue := list.New()
 					localVisited := make(map[string]bool)
 					parent := make(map[string]Recipe)
@@ -426,6 +532,7 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 						for elem := range discovered {
 							combinableElements = append(combinableElements, elem)
 						}
+
 						sortElements(combinableElements, strategyVariant, depthMap, workerID)
 
 						for _, otherElement := range combinableElements {
@@ -435,6 +542,7 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 								continue
 							}
 							localVisited[pairKey] = true
+
 							recipes := getRecipes(currentElement, otherElement)
 
 							for _, recipe := range recipes {
@@ -450,7 +558,7 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 								shouldOverride := false
 								if alreadyFound {
 									rnd := (int(nodesVisitedCount.Load()) + workerID + int(resultDepth)) % 100
-									shouldOverride = rnd < 15
+									shouldOverride = rnd < 15 // 15% chance
 								}
 
 								if !alreadyFound || shouldOverride {
@@ -482,7 +590,7 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 										continue
 									}
 
-									currentPath := buildRecipePath(parent, targetElement, depthMap, strategyVariant)
+									currentPath := buildDiversePath(parent, targetElement, workerID)
 									if len(currentPath) > 0 {
 										var pathTargetRecipe Recipe
 										for _, r := range currentPath {
@@ -512,7 +620,6 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 												workerID, len(allFoundPaths), targetElement,
 												pathTargetRecipe.Ingredient1, pathTargetRecipe.Ingredient2,
 												strategyVariant)
-
 											select {
 											case pathChan <- pathCopy:
 											default:
@@ -537,6 +644,10 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 		wg.Wait()
 		close(pathChan)
 	}()
+
+	for range pathChan {
+		// Paths are already saved to allFoundPaths
+	}
 
 	mu.Lock()
 	result := make([][]Recipe, len(allFoundPaths))
@@ -589,114 +700,9 @@ func getAllUniqueRecipeCombinations(element string) (int, map[string]Recipe) {
 	return len(uniqueCombos), uniqueCombos
 }
 
-func buildRecipePath(recipeParent map[string]Recipe, target string, depth map[string]int, strategyVariant int) []Recipe {
-	dependencies := make(map[string][]string)
-	elementsNeeded := make(map[string]bool)
-
-	queue := list.New()
-	queue.PushBack(target)
-	elementsNeeded[target] = true
-	processed := make(map[string]bool)
-	processed[target] = true
-
-	for queue.Len() > 0 {
-		current := queue.Remove(queue.Front()).(string)
-
-		if isBaseElement(current) {
-			continue
-		}
-
-		recipe, exists := recipeParent[current]
-		if !exists {
-			continue
-		}
-
-		ing1, ing2 := recipe.Ingredient1, recipe.Ingredient2
-		dependencies[ing1] = append(dependencies[ing1], current)
-		dependencies[ing2] = append(dependencies[ing2], current)
-
-		elementsNeeded[current] = true
-
-		ingredients := []string{ing1, ing2}
-		sortElements(ingredients, strategyVariant, depth, len(current))
-
-		for _, ingredient := range ingredients {
-			if !processed[ingredient] && !isBaseElement(ingredient) {
-				processed[ingredient] = true
-				elementsNeeded[ingredient] = true
-				queue.PushBack(ingredient)
-			}
-		}
-	}
-
-	var result []Recipe
-	available := make(map[string]bool)
-
-	sortedBaseElements := make([]string, len(baseElements))
-	copy(sortedBaseElements, baseElements)
-	sort.Strings(sortedBaseElements)
-	for _, base := range sortedBaseElements {
-		available[base] = true
-	}
-
-	remainingElements := len(elementsNeeded)
-	for remainingElements > 0 {
-		candidateElements := make([]string, 0, len(elementsNeeded))
-		for element := range elementsNeeded {
-			if !available[element] {
-				recipe, exists := recipeParent[element]
-				if !exists {
-					continue
-				}
-
-				if available[recipe.Ingredient1] && available[recipe.Ingredient2] {
-					candidateElements = append(candidateElements, element)
-				}
-			}
-		}
-
-		if len(candidateElements) == 0 {
-			break
-		}
-
-		if strategyVariant == 0 {
-			sort.SliceStable(candidateElements, func(i, j int) bool {
-				depthI := depth[candidateElements[i]]
-				depthJ := depth[candidateElements[j]]
-				if depthI != depthJ {
-					return depthI < depthJ
-				}
-
-				depCountI := len(dependencies[candidateElements[i]])
-				depCountJ := len(dependencies[candidateElements[j]])
-				if depCountI != depCountJ {
-					return depCountI > depCountJ
-				}
-
-				return candidateElements[i] < candidateElements[j]
-			})
-		} else {
-			sortElements(candidateElements, strategyVariant, depth, strategyVariant)
-		}
-
-		bestElement := candidateElements[0]
-
-		recipe := recipeParent[bestElement]
-		result = append(result, recipe)
-		available[bestElement] = true
-		delete(elementsNeeded, bestElement)
-		remainingElements--
-
-		if available[target] {
-			break
-		}
-	}
-
-	return result
-}
-
 func findPathForSpecificCombination(targetElement string, targetRecipe Recipe,
 	strategyVariant int, nodesVisitedCount *atomic.Int32, shouldStop func() bool) []Recipe {
+
 	ing1 := targetRecipe.Ingredient1
 	ing2 := targetRecipe.Ingredient2
 
@@ -724,7 +730,7 @@ func findPathForSpecificCombination(targetElement string, targetRecipe Recipe,
 				depthMap[targetElement] = max(depthMap[ing1], depthMap[ing2]) + 1
 				discovered[targetElement] = true
 
-				return buildRecipePath(parent, targetElement, depthMap, strategyVariant)
+				return buildDiversePath(parent, targetElement, strategyVariant)
 			}
 		}
 
@@ -749,10 +755,14 @@ func findPathForSpecificCombination(targetElement string, targetRecipe Recipe,
 				if shouldStop() {
 					return []Recipe{}
 				}
+
 				result := recipe.Result
 				resultDepth := currentDepth + 1
+
 				_, alreadyFound := parent[result]
+
 				isPriorityElement := result == ing1 || result == ing2
+
 				if !alreadyFound || isPriorityElement {
 					parent[result] = recipe
 					depthMap[result] = resultDepth
@@ -820,6 +830,92 @@ func sortElements(elements []string, strategyVariant int, depthMap map[string]in
 			return elements[i] < elements[j]
 		})
 	}
+}
+
+func buildDiversePath(parent map[string]Recipe, target string, workerID int) []Recipe {
+	elementsNeeded := make(map[string]bool)
+	queue := list.New()
+	queue.PushBack(target)
+	processed := make(map[string]bool)
+	processed[target] = true
+	elementsNeeded[target] = true
+
+	for queue.Len() > 0 {
+		current := queue.Remove(queue.Front()).(string)
+
+		if isBaseElement(current) {
+			continue
+		}
+
+		recipe, exists := parent[current]
+		if !exists {
+			return []Recipe{}
+		}
+
+		for _, ingredient := range []string{recipe.Ingredient1, recipe.Ingredient2} {
+			if processed[ingredient] || isBaseElement(ingredient) {
+				continue
+			}
+
+			processed[ingredient] = true
+			elementsNeeded[ingredient] = true
+			queue.PushBack(ingredient)
+		}
+	}
+
+	var result []Recipe
+	available := make(map[string]bool)
+
+	for _, base := range baseElements {
+		available[base] = true
+	}
+
+	for !available[target] {
+		candidates := make([]Recipe, 0)
+
+		for element := range elementsNeeded {
+			if available[element] {
+				continue
+			}
+
+			recipe, exists := parent[element]
+			if !exists {
+				continue
+			}
+
+			if available[recipe.Ingredient1] && available[recipe.Ingredient2] {
+				candidates = append(candidates, recipe)
+			}
+		}
+
+		if len(candidates) == 0 {
+			return []Recipe{}
+		}
+
+		strategyVariant := workerID % 3
+		sort.SliceStable(candidates, func(i, j int) bool {
+			switch strategyVariant {
+			case 0:
+				return candidates[i].Result < candidates[j].Result
+			case 1:
+				return candidates[i].Result > candidates[j].Result
+			default:
+				ing1i := candidates[i].Ingredient1 + candidates[i].Ingredient2
+				ing1j := candidates[j].Ingredient1 + candidates[j].Ingredient2
+				return ing1i < ing1j
+			}
+		})
+
+		recipe := candidates[0]
+		result = append(result, recipe)
+		available[recipe.Result] = true
+
+		if available[target] {
+			break
+		}
+	}
+
+	return result
 }
 
 func ResetCaches() {

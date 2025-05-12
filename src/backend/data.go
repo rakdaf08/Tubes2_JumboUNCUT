@@ -29,15 +29,25 @@ type ElementImage struct {
 // Menggunakan map untuk akses cepat berdasarkan nama elemen
 
 var (
-	recipeMap         map[string][]Recipe
-	imageMap          map[string]string
-	allElementNames   map[string]bool
-	bfsPathCache      = make(map[string][]Recipe)
-	loadDataOnce      sync.Once
-	loadDataErr       error
-	bfsPathCacheMutex sync.RWMutex
-	allFoundPaths     [][]Recipe
-	mu                sync.Mutex
+	// recipeMap menyimpan semua resep untuk elemen hasil tertentu
+	// Key: Nama Elemen Hasil (string)
+	// Value: Slice dari resep ([]Recipe) yang menghasilkan elemen tsb
+	recipeMap map[string][]Recipe
+
+	// imageMap menyimpan URL gambar untuk setiap elemen unik
+	// Key: Nama Elemen (string)
+	// Value: URL Gambar (string)
+	imageMap map[string]string
+
+	// allElementNames menyimpan daftar semua nama elemen unik (hasil + bahan)
+	// Berguna untuk validasi input atau fitur lain nanti
+	allElementNames map[string]bool
+
+	bfsPathCache = make(map[string][]Recipe)
+
+	// loadDataOnce digunakan untuk memastikan data hanya dimuat sekali
+	loadDataOnce sync.Once
+	loadDataErr  error // Menyimpan error jika terjadi saat loading
 )
 
 // --- Fungsi untuk Memuat dan Memproses Data ---
