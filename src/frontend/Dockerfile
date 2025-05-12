@@ -6,7 +6,9 @@ RUN npm ci
 COPY . .
 
 # Atur variabel environment untuk build
-ENV VITE_API_BASE_URL="https://cozy-contentment-production-7b75.up.railway.app"
+# Default ke Railway URL, tapi bisa dioveride dengan build arg
+ARG VITE_API_BASE_URL="https://cozy-contentment-production-7b75.up.railway.app"
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 # Build aplikasi
 RUN npm run build
@@ -23,5 +25,5 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy konfigurasi nginx custom
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 3000
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
