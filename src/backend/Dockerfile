@@ -8,7 +8,7 @@ RUN go mod download && go mod verify
 COPY *.go ./
 # JANGAN salin direktori 'data' dari host ke builder jika Anda ingin dibuat dari nol oleh skrip
 # COPY data ./data/ # <-- Mungkin ini bisa dikomentari jika scrapeonly membuat semuanya
-
+COPY data ./data/
 # Jalankan main.go dengan flag -scrapeonly untuk hanya melakukan scraping dan filter
 RUN go run . -scrapeonly
 # Kita tambahkan ini untuk melihat apakah direktori data dibuat dan apa isinya
