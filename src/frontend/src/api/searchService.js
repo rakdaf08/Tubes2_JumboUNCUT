@@ -34,7 +34,7 @@ async function findRecipes(target, algo, mode, maxRecipes) {
 
     if (!response.ok) {
       //const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      const backendErrorMessage = 'Elemen tidak ditemukan';
+      const backendErrorMessage = 'Adiiiitt Elemen kamu gaadaaa';
       throw new Error(`API Error (${response.status}): ${backendErrorMessage}`);
     }
 
