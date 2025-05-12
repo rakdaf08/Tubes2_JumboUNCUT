@@ -15,11 +15,6 @@ import (
 	"time"
 )
 
-type ElementImage struct {
-	Name     string `json:"name"`
-	ImageURL string `json:"imageURL"`
-}
-
 const (
 	// Jika image_downloader.go ada di .../src/backend/
 	// dan dijalankan dari .../src/backend/, maka path relatifnya adalah:
@@ -133,7 +128,7 @@ func downloadFile(element ElementImage, fullOutputDir string, client *http.Clien
 	fmt.Printf("Berhasil mengunduh '%s' -> '%s'\n", element.Name, filePath)
 }
 
-func maxConcurrentDownloads() {
+func maxConcurrentDownload() {
 	log.Println("Mulai proses pengunduhan gambar...")
 
 	// 1. Dapatkan CWD untuk referensi logging

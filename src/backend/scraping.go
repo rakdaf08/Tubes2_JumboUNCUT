@@ -22,10 +22,10 @@ import (
 // }
 
 // // Struct BARU untuk menyimpan pemetaan nama elemen ke URL gambar
-// type ElementImage struct {
-// 	Name     string `json:"name"`     // Nama elemen
-// 	ImageURL string `json:"imageURL"` // URL Gambar (disimpan apa adanya)
-// }
+type ElementImage struct {
+	Name     string `json:"name"`     // Nama elemen
+	ImageURL string `json:"imageURL"` // URL Gambar (disimpan apa adanya)
+}
 
 // --- Konfigurasi ---
 
