@@ -11,30 +11,29 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	// sync tidak perlu di sini jika tidak digunakan secara langsung di file ini
 )
 
 // MultiSearchResponse struct untuk struktur respons JSON ke frontend
 type MultiSearchResponse struct {
-	SearchTarget   string              `json:"searchTarget"`
-	Algorithm      string              `json:"algorithm"`
-	Mode           string              `json:"mode"`
-	MaxRecipes     int                 `json:"maxRecipes,omitempty"` // Hanya ada jika mode multiple
-	PathFound      bool                `json:"pathFound"`
-	Path           []Recipe            `json:"path,omitempty"`        // Untuk mode shortest
-	Paths          [][]Recipe          `json:"paths,omitempty"`       // Untuk mode multiple
-	ImageURLs      map[string]string   `json:"imageURLs,omitempty"` // URL gambar untuk elemen yang relevan
-	NodesVisited   int                 `json:"nodesVisited"`
-	DurationMillis int64               `json:"durationMillis"`
-	Error          string              `json:"error,omitempty"`       // Pesan error jika ada
+	SearchTarget   string            `json:"searchTarget"`
+	Algorithm      string            `json:"algorithm"`
+	Mode           string            `json:"mode"`
+	MaxRecipes     int               `json:"maxRecipes,omitempty"` // Hanya ada jika mode multiple
+	PathFound      bool              `json:"pathFound"`
+	Path           []Recipe          `json:"path,omitempty"`      // Untuk mode shortest
+	Paths          [][]Recipe        `json:"paths,omitempty"`     // Untuk mode multiple
+	ImageURLs      map[string]string `json:"imageURLs,omitempty"` // URL gambar untuk elemen yang relevan
+	NodesVisited   int               `json:"nodesVisited"`
+	DurationMillis int64             `json:"durationMillis"`
+	Error          string            `json:"error,omitempty"` // Pesan error jika ada
 }
 
 // imageHandler berfungsi sebagai proxy untuk mengambil gambar elemen dari URL aslinya.
 // Ini membantu menghindari masalah CORS di frontend.
 func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// Set CORS headers agar frontend bisa mengakses
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Izinkan akses dari origin manapun
+	w.Header().Set("Access-Control-Allow-Origin", "*")             // Izinkan akses dari origin manapun
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Header yang diizinkan
 
 	// Hanya izinkan metode GET
@@ -366,45 +365,23 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 // (huruf pertama tiap kata besar, sisanya kecil)
 // Ganti fungsi toTitleCase dengan fungsi ini
 func toTitleCase(input string) string {
-    // Pisahkan string menjadi kata-kata
-    words := strings.Fields(input)
-    result := make([]string, len(words))
-    
-    for i, word := range words {
-        if len(word) == 0 {
-            continue
-        }
-        // Untuk setiap kata, buat huruf pertama kapital dan sisanya kecil
-        firstChar := strings.ToUpper(string(word[0]))
-        restOfWord := ""
-        if len(word) > 1 {
-            restOfWord = strings.ToLower(word[1:])
-        }
-        result[i] = firstChar + restOfWord
-    }
-    
-    // Gabungkan kembali menjadi satu string
-    return strings.Join(result, " ")
-}
+	// Pisahkan string menjadi kata-kata
+	words := strings.Fields(input)
+	result := make([]string, len(words))
 
-// Helper function find (jika belum ada di package main atau tidak ter-ekspor)
-// Anda bisa meletakkannya di file util terpisah jika digunakan di banyak tempat.
-func find(slice []string, val string) (int, bool) {
-	for i, item := range slice {
-		if item == val {
-			return i, true
+	for i, word := range words {
+		if len(word) == 0 {
+			continue
 		}
+		// Untuk setiap kata, buat huruf pertama kapital dan sisanya kecil
+		firstChar := strings.ToUpper(string(word[0]))
+		restOfWord := ""
+		if len(word) > 1 {
+			restOfWord = strings.ToLower(word[1:])
+		}
+		result[i] = firstChar + restOfWord
 	}
-	return -1, false
-}
 
-// Fungsi isBaseElement (harus konsisten dengan yang ada di bfs.go/dfs.go atau dipindahkan ke data.go)
-// func isBaseElement(name string) bool {
-// 	baseElements := []string{"Air", "Earth", "Fire", "Water"}
-// 	for _, base := range baseElements {
-// 		if name == base {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+	// Gabungkan kembali menjadi satu string
+	return strings.Join(result, " ")
+}

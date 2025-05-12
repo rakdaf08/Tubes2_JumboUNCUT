@@ -12,14 +12,6 @@ import (
 	"sync/atomic"
 )
 
-var debugMode = false // Set to true for debug output
-
-func debugPrintf(format string, args ...interface{}) {
-	if debugMode {
-		fmt.Printf(format, args...)
-	}
-}
-
 // Using a constant slice for better performance
 var baseElements = []string{"Air", "Earth", "Fire", "Water"}
 
@@ -41,9 +33,8 @@ var (
 )
 
 // FindPathBFS finds the single shortest path to targetElement using BFS
-// This function is completely deterministic and does not use concurrency
 func FindPathBFS(targetElement string) ([]Recipe, int, error) {
-	debugPrintf("Finding BFS shortest path to: %s\n", targetElement)
+	fmt.Printf("Finding BFS shortest path to: %s\n", targetElement)
 	graph := GetAlchemyGraph()
 	if graph == nil {
 		return nil, 0, errors.New("alchemy graph not initialized")
@@ -53,7 +44,7 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 	bfsPathCacheMutex.RLock()
 	if path, exists := bfsPathCache[targetElement]; exists {
 		bfsPathCacheMutex.RUnlock()
-		debugPrintf("BFS Cache: Path to '%s' found in cache.\n", targetElement)
+		fmt.Printf("BFS Cache: Path to '%s' found in cache.\n", targetElement)
 		return path, 0, nil
 	}
 	bfsPathCacheMutex.RUnlock()
@@ -84,14 +75,15 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 		discovered[base] = true // Base elements are already available
 		queue.PushBack(base)
 		depth[base] = 0
-		debugPrintf("Enqueue base element: %s\n", base)
+
+		fmt.Printf("Enqueue base element: %s\n", base)
 	}
 
 	// BFS traversal
 	for queue.Len() > 0 {
 		currentElement := queue.Remove(queue.Front()).(string)
 		currentDepth := depth[currentElement]
-		debugPrintf("Dequeue: %s at depth %d\n", currentElement, currentDepth)
+		fmt.Printf("Dequeue: %s at depth %d\n", currentElement, currentDepth)
 		nodesVisitedCount++
 
 		// Get all recipes that use currentElement
@@ -131,8 +123,8 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 
 					// If found target, reconstruct path and cache it
 					if result == targetElement {
-						debugPrintf("Target '%s' found!\n", targetElement)
-						path := buildRecipePath(recipeParent, targetElement, discovered, depth)
+						fmt.Printf("Target '%s' found!\n", targetElement)
+						path := buildRecipePath(recipeParent, targetElement, depth)
 
 						// Cache with write lock
 						bfsPathCacheMutex.Lock()
@@ -146,15 +138,14 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 					if !elementVisited[result] {
 						elementVisited[result] = true
 						queue.PushBack(result)
-						debugPrintf("Enqueue: %s (from %s + %s) at depth %d\n",
+						fmt.Printf("Enqueue: %s (from %s + %s) at depth %d\n",
 							result, currentElement, otherElement, depth[result])
 					}
 				}
 			}
 		}
 	}
-
-	debugPrintf("Target '%s' cannot be found.\n", targetElement)
+	fmt.Printf("Target '%s' cannot be found.\n", targetElement)
 	return nil, nodesVisitedCount, fmt.Errorf("path to element '%s' not found", targetElement)
 }
 
@@ -167,7 +158,7 @@ func getPairKey(a, b string) string {
 }
 
 // Improved and deterministic path building function for the single path finder
-func buildRecipePath(recipeParent map[string]Recipe, target string, discovered map[string]bool, depth map[string]int) []Recipe {
+func buildRecipePath(recipeParent map[string]Recipe, target string, depth map[string]int) []Recipe {
 	// Create dependency graph for topological sort
 	dependencies := make(map[string][]string)
 	elementsNeeded := make(map[string]bool)
@@ -355,10 +346,6 @@ func getUniqueRecipeKey(recipe Recipe) string {
 	return fmt.Sprintf("%s+%s=>%s", ing1, ing2, recipe.Result)
 }
 
-// Improvements for finding all combinations in the BFS algorithm
-
-// The main issue: Ensure all unique recipe combinations are found
-// Modified FindMultiplePathsBFS to improve combination discovery
 func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int, error) {
 	fmt.Printf("Finding %d different BFS paths to: %s (Multithreaded)\n", maxRecipes, targetElement)
 
@@ -465,15 +452,8 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 
 	// If we still need more paths, launch targeted searches for each remaining combination
 	if len(foundTargetCombinations) < uniqueRecipeCombos && len(allFoundPaths) < maxRecipes {
-		// Get the approximate tier of the target element for tuning
-		elementTier := estimateElementTier(targetElement)
-		debugPrintf("Estimated tier of %s: %d\n", targetElement, elementTier)
-
 		// Adjust search parameters based on element tier
-		numWorkersPerCombo := 2 // Multiple workers per combination for redundancy
-		if elementTier > 8 {
-			numWorkersPerCombo = 3 // More workers for higher-tier elements
-		}
+		numWorkersPerCombo := 3 // Multiple workers per combination for redundancy
 
 		// First, ensure we have at least one worker per remaining combination
 		mu.Lock()
@@ -831,8 +811,6 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 	return result, int(nodesVisitedCount.Load()), nil
 }
 
-// Enhanced Helper function to get all unique recipe combinations for a target element
-// Returns count and a map of combo keys to recipes
 func getAllUniqueRecipeCombinations(element string) (int, map[string]Recipe) {
 	uniqueCombos := make(map[string]Recipe)
 
@@ -1016,34 +994,6 @@ func sortElements(elements []string, strategyVariant int, depthMap map[string]in
 	}
 }
 
-// Helper function to count unique recipe combinations for a target element
-func countUniqueRecipeCombinations(element string) int {
-	if isBaseElement(element) {
-		return 0 // Base elements have no recipes
-	}
-
-	graph := GetAlchemyGraph()
-	if graph == nil {
-		return 0
-	}
-
-	// Track unique ingredient combinations (normalized so A+B = B+A)
-	uniqueCombos := make(map[string]bool)
-
-	// Check all recipe sources
-	for _, recipes := range graph {
-		for _, recipe := range recipes {
-			if recipe.Result == element {
-				// Generate unique key for this ingredient combination
-				comboKey := getUniqueRecipeKey(recipe)
-				uniqueCombos[comboKey] = true
-			}
-		}
-	}
-
-	return len(uniqueCombos)
-}
-
 // buildDiversePath builds a valid path with worker-specific strategy for diversity
 func buildDiversePath(parent map[string]Recipe, target string, workerID int) []Recipe {
 	// Track elements needed for the path
@@ -1154,255 +1104,9 @@ func buildDiversePath(parent map[string]Recipe, target string, workerID int) []R
 	return result
 }
 
-// Estimate the tier/complexity of an element to tune search parameters
-func estimateElementTier(element string) int {
-	if isBaseElement(element) {
-		return 0
-	}
-
-	// Run a quick DFS to estimate element tier
-	graph := GetAlchemyGraph()
-	if graph == nil {
-		return 10 // Default to high tier if no graph
-	}
-
-	// Setup
-	visited := make(map[string]bool)
-	tierMap := make(map[string]int)
-
-	// Initialize base elements
-	for _, base := range baseElements {
-		tierMap[base] = 0
-	}
-
-	// Helper function
-	var estimateTierDFS func(string) int
-	estimateTierDFS = func(elem string) int {
-		// Check cache
-		if tier, ok := tierMap[elem]; ok {
-			return tier
-		}
-
-		// Base elements are tier 0
-		if isBaseElement(elem) {
-			tierMap[elem] = 0
-			return 0
-		}
-
-		// Prevent infinite recursion
-		if visited[elem] {
-			return 999 // High number to indicate cycle
-		}
-		visited[elem] = true
-
-		// Find recipes that can create this element
-		bestTier := 999
-		for _, recipes := range graph {
-			for _, recipe := range recipes {
-				if recipe.Result == elem {
-					// Calculate tier from ingredients
-					ing1Tier := estimateTierDFS(recipe.Ingredient1)
-					ing2Tier := estimateTierDFS(recipe.Ingredient2)
-					recipeTier := 1 + max(ing1Tier, ing2Tier)
-
-					// Update best tier
-					if recipeTier < bestTier {
-						bestTier = recipeTier
-					}
-				}
-			}
-		}
-
-		// Cache and return
-		tierMap[elem] = bestTier
-		visited[elem] = false // Backtrack
-		return bestTier
-	}
-
-	// Estimate tier
-	return estimateTierDFS(element)
-}
-
 // Reset global caches - can be called to free memory or refresh state
 func ResetCaches() {
 	bfsPathCacheMutex.Lock()
 	bfsPathCache = make(map[string][]Recipe)
 	bfsPathCacheMutex.Unlock()
-}
-
-// Improved path building function that leverages insights from the single path finder
-func buildImprovedPath(parent map[string]Recipe, target string, elementDepths map[string]int) []Recipe {
-	// Create dependency graph for topological sort
-	dependencies := make(map[string][]string)
-	elementsNeeded := make(map[string]bool)
-
-	// Start with target and work backwards
-	queue := list.New()
-	queue.PushBack(target)
-	elementsNeeded[target] = true
-	processed := make(map[string]bool)
-	processed[target] = true
-
-	// Build dependency graph
-	for queue.Len() > 0 {
-		current := queue.Remove(queue.Front()).(string)
-
-		// Skip base elements
-		if isBaseElement(current) {
-			continue
-		}
-
-		recipe, exists := parent[current]
-		if !exists {
-			return []Recipe{} // Invalid path
-		}
-
-		// Add dependencies
-		ing1, ing2 := recipe.Ingredient1, recipe.Ingredient2
-		dependencies[ing1] = append(dependencies[ing1], current)
-		dependencies[ing2] = append(dependencies[ing2], current)
-
-		// Queue ingredients in a deterministic order
-		for _, ingredient := range []string{ing1, ing2} {
-			if !processed[ingredient] && !isBaseElement(ingredient) {
-				processed[ingredient] = true
-				elementsNeeded[ingredient] = true
-				queue.PushBack(ingredient)
-			}
-		}
-	}
-
-	// Build result in correct order
-	var result []Recipe
-	available := make(map[string]bool)
-
-	// Start with base elements
-	for _, base := range baseElements {
-		available[base] = true
-	}
-
-	// Keep adding recipes until we have the target
-	for len(elementsNeeded) > 0 {
-		// Find elements where we have all ingredients
-		candidates := make([]string, 0)
-		for element := range elementsNeeded {
-			if available[element] {
-				continue // Already available
-			}
-
-			recipe, exists := parent[element]
-			if !exists {
-				return []Recipe{} // Invalid path
-			}
-
-			if available[recipe.Ingredient1] && available[recipe.Ingredient2] {
-				candidates = append(candidates, element)
-			}
-		}
-
-		if len(candidates) == 0 {
-			return []Recipe{} // Invalid path - can't proceed
-		}
-
-		// Sort candidates for deterministic but diverse selection
-		sort.SliceStable(candidates, func(i, j int) bool {
-			// First by dependency count (more dependencies first)
-			depI := len(dependencies[candidates[i]])
-			depJ := len(dependencies[candidates[j]])
-			if depI != depJ {
-				return depI > depJ
-			}
-
-			// Then by depth from element mapping if available
-			di, okI := elementDepths[candidates[i]]
-			dj, okJ := elementDepths[candidates[j]]
-			if okI && okJ && di != dj {
-				return di < dj
-			}
-
-			// Finally alphabetically
-			return candidates[i] < candidates[j]
-		})
-
-		// Select best candidate
-		element := candidates[0]
-		recipe := parent[element]
-
-		// Add recipe and mark element as available
-		result = append(result, recipe)
-		available[element] = true
-		delete(elementsNeeded, element)
-
-		// If we have our target, we can stop
-		if available[target] {
-			break
-		}
-	}
-
-	return result
-}
-
-// Precompute element depths for better path building
-func precomputeElementDepths(targetElement string) map[string]int {
-	depths := make(map[string]int)
-
-	// Set base elements to depth 0
-	for _, base := range baseElements {
-		depths[base] = 0
-	}
-
-	// Run a quick BFS to establish depth mapping
-	graph := GetAlchemyGraph()
-	if graph == nil {
-		return depths
-	}
-
-	queue := list.New()
-	visited := make(map[string]bool)
-
-	// Start with base elements
-	for _, base := range baseElements {
-		queue.PushBack(base)
-		visited[base] = true
-	}
-
-	// Simple BFS to establish depths
-	for queue.Len() > 0 {
-		current := queue.Remove(queue.Front()).(string)
-		currentDepth := depths[current]
-
-		// Try all combinations with elements at lower or equal depth
-		for other, otherDepth := range depths {
-			if otherDepth > currentDepth {
-				continue // Skip deeper elements to avoid cycles
-			}
-
-			// Skip already visited pairs
-			pairKey := getPairKey(current, other)
-			if visited[pairKey] {
-				continue
-			}
-			visited[pairKey] = true
-
-			// Check for recipes
-			for _, recipe := range getRecipes(current, other) {
-				result := recipe.Result
-				newDepth := currentDepth + 1
-
-				// Update depth if this is shorter
-				existingDepth, exists := depths[result]
-				if !exists || newDepth < existingDepth {
-					depths[result] = newDepth
-
-					// Continue BFS from this point if not visited
-					if !visited[result] {
-						visited[result] = true
-						queue.PushBack(result)
-					}
-				}
-			}
-		}
-	}
-
-	return depths
 }
