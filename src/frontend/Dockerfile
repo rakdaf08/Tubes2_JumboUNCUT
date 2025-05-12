@@ -5,7 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 # Jika Anda menggunakan VITE_API_BASE_URL, set ke "" atau "/"
-ENV VITE_API_BASE_URL="cozy-contentment-production-7b75.up.railway.app" 
+ENV VITE_API_BASE_URL="" 
 RUN npm run build
 
 # Tahap 2: Sajikan aplikasi menggunakan server web ringan (Nginx)
