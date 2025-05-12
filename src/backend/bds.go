@@ -1,113 +1,49 @@
-// src/backend/bds.go
 package main
 
 import (
 	"container/list"
 	"errors"
 	"fmt"
+	"sort" // Diperlukan untuk generatePathIdentifier dan sorting
+	// Diperlukan untuk generatePathIdentifier
 	"sync"
+	"sync/atomic" // Digunakan untuk nodesVisitedCount di multiple
 )
 
-// isBaseElement dan generatePathIdentifier diasumsikan ada di bfs.go atau file util bersama
+// --- Definisi yang Duplikat Dihapus ---
+// ... (asumsi definisi ada di file lain) ...
 
-func printParentMap(name string, parentMap map[string]Recipe) {
-	fmt.Printf("--- Isi Parent Map: %s ---\n", name)
-	if len(parentMap) == 0 {
-		fmt.Println("(Kosong)")
-		return
-	}
-	for key, recipe := range parentMap {
-		fmt.Printf("  ParentMap['%s']: %s + %s => %s\n", key, recipe.Ingredient1, recipe.Ingredient2, recipe.Result)
-	}
-	fmt.Println("--- Akhir Parent Map ---")
-}
+// --- Implementasi Bidirectional Search (BDS) ---
 
-// reconstructSinglePathHelper: parentMap[HASIL_LANGKAH_INI] = RESEP_YANG_MENGHASILKANNYA
-// startNode adalah HASIL dari langkah terakhir di segmen ini.
-// stopNode adalah HASIL dari langkah pertama di segmen ini (atau "" untuk dasar).
-func reconstructSinglePathHelper(parentMap map[string]Recipe, startNode string, stopNode string) []Recipe {
+// reconstructSingleSegmentPath: Membangun jalur dari parent maps setelah pertemuan.
+// (Fungsi ini tetap sama seperti versi sebelumnya)
+func reconstructSingleSegmentPath(parentMap map[string]Recipe, startNode string, stopCondition func(string) bool) []Recipe {
 	pathList := list.New()
+	processed := make(map[string]bool)
 	curr := startNode
-
-	fmt.Printf("Rekonstruksi Single: Mulai dari '%s'", curr)
-	if stopNode != "" { fmt.Printf(" menuju stopNode '%s'", stopNode) } else { fmt.Printf(" menuju elemen dasar")}
-	fmt.Println()
-	// printParentMap("Digunakan dalam reconstructSinglePathHelper untuk startNode: "+startNode, parentMap) // Optional: uncomment for extreme debugging
-
-	processedInPath := make(map[string]bool)
-
-	for {
-		fmt.Printf("Rekonstruksi Single - Iterasi: curr = '%s'\n", curr)
-
-		if curr == stopNode && stopNode != "" {
-			fmt.Printf("Rekonstruksi Single: Mencapai stopNode yang ditentukan '%s'.\n", curr)
-			break
-		}
-		if isBaseElement(curr) && stopNode == "" {
-			fmt.Printf("Rekonstruksi Single: Mencapai elemen dasar '%s'.\n", curr)
-			break
-		}
-		if processedInPath[curr] { // Mencegah loop dalam rekonstruksi
-		    fmt.Printf("Rekonstruksi Single: Loop terdeteksi pada '%s'. Berhenti.\n", curr)
-		    return []Recipe{} // Kembalikan path kosong jika loop terdeteksi
-		}
-		processedInPath[curr] = true
-
-		recipe, exists := parentMap[curr] // recipe adalah {I1, I2, curr}
-		if !exists {
-			if (stopNode != "" && curr != stopNode) || (stopNode == "" && !isBaseElement(curr)) {
-			    fmt.Printf("Rekonstruksi Single: Tidak ada parent untuk '%s' di parentMap sebelum mencapai tujuan. Berhenti.\n", curr)
-            } else {
-                 fmt.Printf("Rekonstruksi Single: Berhenti normal di '%s' (mungkin stopNode atau elemen dasar tanpa parent eksplisit di map).\n", curr)
-            }
-			break
-		}
-
+	for curr != "" && !stopCondition(curr) {
+		recipe, exists := parentMap[curr]
+		if !exists { break }
+		recipeKey := getUniqueRecipeKey(recipe)
+		if processed[recipeKey] { break }
 		pathList.PushFront(recipe)
-		fmt.Printf("Rekonstruksi Single: Menambahkan resep ke path (%s + %s => %s)\n", recipe.Ingredient1, recipe.Ingredient2, recipe.Result)
-
-		nextCand1 := recipe.Ingredient1
-		nextCand2 := recipe.Ingredient2
+		processed[recipeKey] = true
+		_, p1Exists := parentMap[recipe.Ingredient1]
+		_, p2Exists := parentMap[recipe.Ingredient2]
 		chosenParent := ""
-
-		fmt.Printf("Rekonstruksi Single: Mencari parent dari '%s' melalui resep %v. Kandidat: '%s', '%s'. StopNode: '%s'\n", curr, recipe, nextCand1, nextCand2, stopNode)
-
-		// Logika pemilihan parent untuk mundur:
-		// Pilih bahan yang merupakan stopNode, atau punya parent lagi, atau dasar (jika tidak ada stopNode)
-		if stopNode != "" { // Mode mundur menuju meetingNode, atau maju menuju meetingNode (stopNode adalah meetingNode)
-			if nextCand1 == stopNode { chosenParent = nextCand1 } else 
-			if nextCand2 == stopNode { chosenParent = nextCand2 }
+		if p1Exists && p2Exists {
+			if recipe.Ingredient1 < recipe.Ingredient2 { chosenParent = recipe.Ingredient1 } else { chosenParent = recipe.Ingredient2 }
+		} else if p1Exists { chosenParent = recipe.Ingredient1
+		} else if p2Exists { chosenParent = recipe.Ingredient2
+		} else {
+			if isBaseElement(recipe.Ingredient1) && stopCondition(recipe.Ingredient1) { chosenParent = recipe.Ingredient1
+			} else if isBaseElement(recipe.Ingredient2) && stopCondition(recipe.Ingredient2) { chosenParent = recipe.Ingredient2
+			} else if isBaseElement(recipe.Ingredient1) && !stopCondition(recipe.Ingredient1) { chosenParent = recipe.Ingredient1
+			} else if isBaseElement(recipe.Ingredient2) && !stopCondition(recipe.Ingredient2) { chosenParent = recipe.Ingredient2
+			} else { chosenParent = "" }
 		}
-
-		if chosenParent == "" { // Jika stopNode belum dipilih atau tidak ada stopNode (mode maju ke dasar)
-			_, p1Exists := parentMap[nextCand1]
-			_, p2Exists := parentMap[nextCand2]
-
-			// Prioritaskan yang ada di parentMap dan bukan loop
-			if p1Exists && nextCand1 != curr { chosenParent = nextCand1 } else 
-			if p2Exists && nextCand2 != curr { chosenParent = nextCand2 } else 
-			// Kemudian elemen dasar (hanya jika tidak ada stopNode spesifik)
-			if isBaseElement(nextCand1) && nextCand1 != curr && stopNode == "" { chosenParent = nextCand1 } else 
-			if isBaseElement(nextCand2) && nextCand2 != curr && stopNode == "" { chosenParent = nextCand2 } else {
-				// Jika tidak ada parent di map dan bukan dasar/stopNode, berhenti
-				fmt.Printf("Rekonstruksi Single: Tidak bisa menentukan langkah mundur valid dari '%s' (bahan tidak punya parent/dasar/stopNode).\n", curr)
-				break
-			}
-		}
-        
-        if chosenParent == "" {
-             fmt.Printf("Rekonstruksi Single: Tidak ada chosenParent yang valid untuk '%s'. Berhenti.\n", curr)
-             break
-        }
-        // Mencegah loop A+B=A jika A bukan stopNode (atau bukan elemen dasar jika stopNode="")
-        if chosenParent == curr && ( (stopNode != "" && curr != stopNode) || (stopNode == "" && !isBaseElement(curr)) ) {
-             fmt.Printf("Rekonstruksi Single: Terdeteksi akan loop di '%s' saat menuju '%s'. Berhenti.\n", curr, stopNode)
-             break
-        }
-		fmt.Printf("Rekonstruksi Single: Mundur ke '%s'.\n", chosenParent)
 		curr = chosenParent
 	}
-
 	finalPath := make([]Recipe, 0, pathList.Len())
 	for e := pathList.Front(); e != nil; e = e.Next() {
 		finalPath = append(finalPath, e.Value.(Recipe))
@@ -115,164 +51,322 @@ func reconstructSinglePathHelper(parentMap map[string]Recipe, startNode string, 
 	return finalPath
 }
 
-func reconstructBidirectionalPath(parentForward map[string]Recipe, parentBackward map[string]Recipe, meetingNode string, originalTarget string) []Recipe {
-	fmt.Printf("Rekonstruksi BDS: Bertemu di '%s'. Target awal: '%s'\n", meetingNode, originalTarget)
-    printParentMap("parentForward saat rekonstruksi", parentForward)
-    printParentMap("parentBackward saat rekonstruksi", parentBackward)
+// buildSortedPathFromRecipes: Mengurutkan sekumpulan resep berdasarkan dependensi.
+// Mirip dengan logika buildRecipePath di BFS.
+func buildSortedPathFromRecipes(recipes map[string]Recipe, targetElement string) []Recipe {
+	fmt.Println("  Mengurutkan resep gabungan berdasarkan dependensi...")
+	if len(recipes) == 0 {
+		return []Recipe{}
+	}
 
-	// 1. Jalur Maju: Dari meetingNode ke elemen dasar.
-	// parentForward[X] = resep yang menghasilkan X.
-	pathForward := reconstructSinglePathHelper(parentForward, meetingNode, "")
-	fmt.Println("--- Jalur Maju (ke meetingNode) Selesai Direkonstruksi ---")
-	for i, r := range pathForward { fmt.Printf("Maju %d: %s + %s => %s\n", i+1, r.Ingredient1, r.Ingredient2, r.Result) }
+	// 1. Identifikasi semua elemen yang terlibat (bahan dan hasil)
+	elementsInvolved := make(map[string]bool)
+	for _, r := range recipes {
+		elementsInvolved[r.Ingredient1] = true
+		elementsInvolved[r.Ingredient2] = true
+		elementsInvolved[r.Result] = true
+	}
 
-	// 2. Jalur Mundur: Dari originalTarget ke meetingNode.
-	// parentBackward[X] = resep yang menghasilkan X (dari arah mundur).
-	pathSegmentMeetingToTarget := []Recipe{}
-	if meetingNode != originalTarget {
-		// Rekonstruksi dari originalTarget ke meetingNode
-		pathBackwardTemp := reconstructSinglePathHelper(parentBackward, originalTarget, meetingNode)
-		fmt.Println("--- Jalur Mundur Temp (dari target ke meeting, sebelum dibalik) Selesai Direkonstruksi ---")
-		for i, r := range pathBackwardTemp { fmt.Printf("Mundur Temp %d: %s + %s => %s\n", i+1, r.Ingredient1, r.Ingredient2, r.Result) }
-
-		// Balik urutannya untuk mendapatkan dari meetingNode ke originalTarget
-		for i := len(pathBackwardTemp) - 1; i >= 0; i-- {
-			pathSegmentMeetingToTarget = append(pathSegmentMeetingToTarget, pathBackwardTemp[i])
+	// 2. Inisialisasi elemen yang tersedia (awalnya hanya base elements)
+	available := make(map[string]bool)
+	for _, base := range baseElements {
+		if elementsInvolved[base] { // Hanya tambahkan base element jika relevan dengan path ini
+			available[base] = true
 		}
 	}
 
-	fmt.Println("--- Jalur Mundur (dari meetingNode ke target, setelah dibalik) Selesai ---")
-	for i, r := range pathSegmentMeetingToTarget { fmt.Printf("Mundur %d: %s + %s => %s\n", i+1, r.Ingredient1, r.Ingredient2, r.Result) }
-
-	fullPath := append([]Recipe{}, pathForward...)
-	fullPath = append(fullPath, pathSegmentMeetingToTarget...)
-	
-	if len(fullPath) == 0 && !isBaseElement(originalTarget) { 
-		if meetingNode != originalTarget {
-			fmt.Printf("Peringatan Rekonstruksi: Jalur BDS kosong untuk target non-dasar '%s'. Meeting: '%s'\n", originalTarget, meetingNode)
-		} else if !isBaseElement(originalTarget) {
-			fmt.Printf("Peringatan Rekonstruksi: Jalur BDS kosong, target '%s' mungkin tidak dapat dibuat (meeting node == target).\n", originalTarget)
-		}
-	} else if len(fullPath) > 0 { 
-		if !isBaseElement(originalTarget) { 
-			lastRecipe := fullPath[len(fullPath)-1]
-			if lastRecipe.Result != originalTarget { 
-				fmt.Printf("Peringatan Validasi Rekonstruksi: Resep terakhir (%v) TIDAK menghasilkan target (%s)\n", lastRecipe, originalTarget) 
-			} else {
-				fmt.Printf("Validasi Rekonstruksi: Resep terakhir (%v) menghasilkan target (%s) - OK\n", lastRecipe, originalTarget)
-			} 
-		} 
+	// 3. Buat map resep yang belum digunakan
+	remainingRecipes := make(map[string]Recipe)
+	for k, v := range recipes {
+		remainingRecipes[k] = v
 	}
-	fmt.Println("\n--- Jalur Akhir Hasil Rekonstruksi BDS ---")
-	for i, recipe := range fullPath { fmt.Printf("Langkah %d: %s + %s => %s\n", i+1, recipe.Ingredient1, recipe.Ingredient2, recipe.Result) }
 
-	return fullPath
+	// 4. Iteratif membangun jalur terurut
+	sortedPath := make([]Recipe, 0, len(recipes))
+	iterations := 0 // Safety break
+	maxIterations := len(recipes) * 2 + 10 // Batas iterasi untuk mencegah infinite loop
+
+	for !available[targetElement] && iterations < maxIterations {
+		addedRecipeInIteration := false
+		// Cari resep yang bisa dibuat (kedua bahan tersedia) dari resep yang tersisa
+		candidates := make([]Recipe, 0)
+		candidateKeys := make([]string, 0) // Simpan key untuk menghapus dari remainingRecipes
+
+		for key, recipe := range remainingRecipes {
+			if available[recipe.Ingredient1] && available[recipe.Ingredient2] {
+				candidates = append(candidates, recipe)
+				candidateKeys = append(candidateKeys, key)
+			}
+		}
+
+		if len(candidates) == 0 {
+			// Tidak ada lagi resep yang bisa dibuat, tapi target belum tercapai
+			fmt.Printf("  ERROR (Sort): Tidak ada kandidat resep yang bisa dibuat, target '%s' belum tersedia. Elemen tersedia: %v\n", targetElement, available)
+			// Kembalikan apa yang sudah diurutkan sejauh ini, mungkin tidak lengkap
+			return sortedPath
+		}
+
+		// Pilih kandidat terbaik (misalnya, urutkan untuk determinisme)
+		sort.SliceStable(candidates, func(i, j int) bool {
+			// Strategi sorting bisa bervariasi, misal berdasarkan nama hasil
+			return candidates[i].Result < candidates[j].Result
+		})
+
+		// Tambahkan resep terpilih ke jalur terurut
+		// Kita bisa tambahkan semua kandidat yang valid di iterasi ini
+		for i, recipe := range candidates {
+			key := candidateKeys[i]
+			sortedPath = append(sortedPath, recipe)
+			available[recipe.Result] = true // Tandai hasil sebagai tersedia
+			delete(remainingRecipes, key)  // Hapus dari resep tersisa
+			addedRecipeInIteration = true
+			// fmt.Printf("    Sort Step %d: Menambahkan %s + %s => %s\n", len(sortedPath), recipe.Ingredient1, recipe.Ingredient2, recipe.Result)
+		}
+
+		if !addedRecipeInIteration && !available[targetElement] {
+			// Jika tidak ada resep yang ditambahkan tapi target belum ada, berarti ada masalah
+			fmt.Printf("  ERROR (Sort): Tidak ada resep baru ditambahkan di iterasi %d, target '%s' belum tersedia.\n", iterations+1, targetElement)
+			return sortedPath // Kembalikan path parsial
+		}
+		iterations++
+	}
+
+	if iterations >= maxIterations {
+		fmt.Printf("  ERROR (Sort): Melebihi batas iterasi maksimum (%d), target '%s' mungkin tidak tercapai atau ada loop dependensi.\n", maxIterations, targetElement)
+	} else if !available[targetElement] {
+        fmt.Printf("  PERINGATAN (Sort): Loop selesai, tapi target '%s' tidak tersedia di akhir.\n", targetElement)
+    } else {
+        fmt.Printf("  Pengurutan resep selesai. Total langkah terurut: %d\n", len(sortedPath))
+    }
+
+
+	return sortedPath
 }
 
-// FindPathBDS dengan pengisian parentBackward yang KONSISTEN
+
+// FindPathBDS: Mencari jalur menggunakan hybrid BDS + BFS.
 func FindPathBDS(targetElement string) ([]Recipe, int, error) {
-	fmt.Printf("Memulai Bidirectional Search (shortest path) ke: %s\n", targetElement)
-	recipeMap := GetRecipeMap(); alchemyGraph := GetAlchemyGraph()
-	if recipeMap == nil || alchemyGraph == nil { return nil, 0, errors.New("data belum diinisialisasi") }
-	if isBaseElement(targetElement) { return []Recipe{}, 0, nil }
+	fmt.Printf("Hybrid BDS+BFS: Mencari jalur ke: %s\n", targetElement)
+	recipeMap := GetRecipeMap()
+	alchemyGraph := GetAlchemyGraph()
+	if recipeMap == nil || alchemyGraph == nil {
+		return nil, 0, errors.New("data resep/graf belum diinisialisasi")
+	}
+	if isBaseElement(targetElement) {
+		return []Recipe{}, 0, nil
+	}
 
 	nodesVisitedCount := 0
-	queueForward := list.New(); visitedForward := make(map[string]bool); parentForward := make(map[string]Recipe)
-	queueBackward := list.New(); visitedBackward := make(map[string]bool); parentBackward := make(map[string]Recipe) // parentBackward[X] = resep yg menghasilkan X dari arah target
+	queueForward := list.New()
+	visitedForward := make(map[string]int)
+	parentForward := make(map[string]Recipe)
+	queueBackward := list.New()
+	visitedBackward := make(map[string]int)
+	parentBackward := make(map[string]Recipe)
 
-	baseElements := []string{"Air", "Earth", "Fire", "Water"}
+	// Inisialisasi
 	for _, base := range baseElements {
-		if !visitedForward[base] { queueForward.PushBack(base); visitedForward[base] = true }
+		if visitedForward[base] == 0 {
+			queueForward.PushBack(base)
+			visitedForward[base] = 1
+		}
 	}
-	if !visitedBackward[targetElement] { queueBackward.PushBack(targetElement); visitedBackward[targetElement] = true }
+	if visitedBackward[targetElement] == 0 {
+		queueBackward.PushBack(targetElement)
+		visitedBackward[targetElement] = 1
+	}
 
-	for queueForward.Len() > 0 || queueBackward.Len() > 0 {
-		// --- MAJU ---
-		if queueForward.Len() > 0 {
-			lenF := queueForward.Len()
-			for i := 0; i < lenF; i++ {
-				if queueForward.Len() == 0 { break }
-				currF := queueForward.Remove(queueForward.Front()).(string)
-				nodesVisitedCount++
-				fmt.Printf("BDS Maju: Memproses '%s'. VisitedBackward['%s']: %t\n", currF, currF, visitedBackward[currF])
-				if visitedBackward[currF] {
-					fmt.Printf("Pertemuan dari Maju di '%s'\n", currF)
-					return reconstructBidirectionalPath(parentForward, parentBackward, currF, targetElement), nodesVisitedCount, nil
-				}
-				recipesUsingCurrF := alchemyGraph[currF]
-				for _, recipe := range recipesUsingCurrF {
-					otherIng := ""; if recipe.Ingredient1 == currF { otherIng = recipe.Ingredient2 } else if recipe.Ingredient2 == currF { otherIng = recipe.Ingredient1 } else { continue }
-					if visitedForward[otherIng] {
-						result := recipe.Result
-						if !visitedForward[result] {
-							visitedForward[result] = true; parentForward[result] = recipe; queueForward.PushBack(result)
-							fmt.Printf("BDS Maju: Parent['%s'] = %v (dari %s + %s)\n", result, recipe, recipe.Ingredient1, recipe.Ingredient2)
-							if visitedBackward[result] {
-								fmt.Printf("Pertemuan dari Maju (ekspansi) di '%s'\n", result)
-								return reconstructBidirectionalPath(parentForward, parentBackward, result, targetElement), nodesVisitedCount, nil
-							}
+	currentLevelForward := 1
+	currentLevelBackward := 1
+	var meetingNode string = ""
+
+	// --- Loop BDS Utama ---
+	for queueForward.Len() > 0 && queueBackward.Len() > 0 && meetingNode == "" {
+
+		// --- Langkah Maju ---
+		lenF := queueForward.Len()
+		for i := 0; i < lenF && meetingNode == ""; i++ {
+			if queueForward.Len() == 0 { break }
+			currF := queueForward.Remove(queueForward.Front()).(string)
+			nodesVisitedCount++
+
+			if visitedBackward[currF] > 0 {
+				// fmt.Printf("BDS: Pertemuan DARI FWD di '%s'\n", currF)
+				meetingNode = currF
+			}
+
+			recipesUsingCurrF := alchemyGraph[currF]
+			for _, recipe := range recipesUsingCurrF {
+				otherIng := ""
+				if recipe.Ingredient1 == currF { otherIng = recipe.Ingredient2 } else
+				if recipe.Ingredient2 == currF { otherIng = recipe.Ingredient1 } else { continue }
+
+				if visitedForward[otherIng] > 0 && visitedForward[otherIng] <= currentLevelForward {
+					result := recipe.Result
+					if visitedForward[result] == 0 {
+						visitedForward[result] = currentLevelForward + 1
+						parentForward[result] = recipe
+						queueForward.PushBack(result)
+
+						if visitedBackward[result] > 0 && meetingNode == "" {
+							// fmt.Printf("BDS: Pertemuan SETELAH FWD ekspansi di '%s'\n", result)
+							meetingNode = result
 						}
 					}
 				}
 			}
 		}
+		if meetingNode != "" { break }
+		currentLevelForward++
 
-		// --- MUNDUR ---
-		if queueBackward.Len() > 0 {
-			lenB := queueBackward.Len()
-			for i := 0; i < lenB; i++ {
-				if queueBackward.Len() == 0 { break }
-				// currB_as_RESULT adalah elemen yang kita pop dari queueBackward. Ini adalah HASIL dari suatu resep dari arah mundur.
-				currB_as_RESULT := queueBackward.Remove(queueBackward.Front()).(string)
-				nodesVisitedCount++
-				fmt.Printf("BDS Mundur: Memproses HASIL mundur '%s'. VisitedForward['%s']: %t\n", currB_as_RESULT, currB_as_RESULT, visitedForward[currB_as_RESULT])
+		// --- Langkah Mundur ---
+		lenB := queueBackward.Len()
+		for i := 0; i < lenB && meetingNode == ""; i++ {
+			if queueBackward.Len() == 0 { break }
+			currB := queueBackward.Remove(queueBackward.Front()).(string)
+			nodesVisitedCount++
 
-				if visitedForward[currB_as_RESULT] {
-					fmt.Printf("Pertemuan dari Mundur di '%s'\n", currB_as_RESULT)
-					return reconstructBidirectionalPath(parentForward, parentBackward, currB_as_RESULT, targetElement), nodesVisitedCount, nil
-				}
+			if visitedForward[currB] > 0 {
+				// fmt.Printf("BDS: Pertemuan DARI BWD di '%s'\n", currB)
+				meetingNode = currB
+			}
 
-				// Cari resep-resep R = {I1, I2, currB_as_RESULT} yang MENGHASILKAN currB_as_RESULT.
-				recipes_that_make_currB := recipeMap[currB_as_RESULT]
-				for _, recipe_makes_currB := range recipes_that_make_currB { // recipe_makes_currB = {I1, I2, currB_as_RESULT}
-					// Bahan-bahan (I1, I2) adalah langkah mundur selanjutnya ("anak-anak" dari currB_as_RESULT dari arah mundur).
-					// Kita set parentBackward[currB_as_RESULT] = recipe_makes_currB.
-					// Ini berarti resep yang menghasilkan currB_as_RESULT (dari I1 dan I2) disimpan.
-					if _, exists := parentBackward[currB_as_RESULT]; !exists { // Simpan resep pertama yang ditemukan (shortest path dari target)
-						parentBackward[currB_as_RESULT] = recipe_makes_currB
-						fmt.Printf("BDS Mundur: Parent['%s'] = %v (dari %s + %s)\n", currB_as_RESULT, recipe_makes_currB, recipe_makes_currB.Ingredient1, recipe_makes_currB.Ingredient2)
-					}
+			recipesMakingCurrB := recipeMap[currB]
+			if _, exists := parentBackward[currB]; !exists && len(recipesMakingCurrB) > 0 {
+				parentBackward[currB] = recipesMakingCurrB[0]
+			}
 
-					ingredients_as_prev_results := []string{recipe_makes_currB.Ingredient1, recipe_makes_currB.Ingredient2}
-					for _, prev_step_result_ing := range ingredients_as_prev_results {
-						if !visitedBackward[prev_step_result_ing] {
-							visitedBackward[prev_step_result_ing] = true
-							// `parentBackward[prev_step_result_ing]` akan diisi ketika `prev_step_result_ing` menjadi `currB_as_RESULT`
-							queueBackward.PushBack(prev_step_result_ing)
+			for _, recipe := range recipesMakingCurrB {
+				ingredients := []string{recipe.Ingredient1, recipe.Ingredient2}
+				for _, ing := range ingredients {
+					if visitedBackward[ing] == 0 {
+						visitedBackward[ing] = currentLevelBackward + 1
+						queueBackward.PushBack(ing)
 
-							if visitedForward[prev_step_result_ing] {
-								fmt.Printf("Pertemuan Mundur (ekspansi di bahan) di '%s'\n", prev_step_result_ing)
-								// Saat pertemuan di 'prev_step_result_ing', pastikan parent-nya (currB_as_RESULT) sudah punya entri di parentBackward
-								if _, ok := parentBackward[currB_as_RESULT]; !ok {
-									parentBackward[currB_as_RESULT] = recipe_makes_currB // Set parent jika belum ada
-									fmt.Printf("BDS Mundur (Pertemuan): Parent['%s'] = %v\n", currB_as_RESULT, recipe_makes_currB)
-								}
-								return reconstructBidirectionalPath(parentForward, parentBackward, prev_step_result_ing, targetElement), nodesVisitedCount, nil
-							}
+						if visitedForward[ing] > 0 && meetingNode == "" {
+							// fmt.Printf("BDS: Pertemuan SETELAH BWD ekspansi di '%s'\n", ing)
+							meetingNode = ing
 						}
 					}
 				}
 			}
 		}
-		if queueForward.Len() == 0 && queueBackward.Len() == 0 { break }
+		if meetingNode != "" { break }
+		currentLevelBackward++
+
+		if queueForward.Len() == 0 || queueBackward.Len() == 0 { break }
 	}
-	return nil, nodesVisitedCount, fmt.Errorf("jalur BDS (shortest) ke '%s' tidak ditemukan", targetElement)
+	// --- Akhir Loop BDS Utama ---
+
+	if meetingNode == "" {
+		fmt.Printf("Hybrid BDS+BFS: Tidak ada pertemuan ditemukan untuk '%s'.\n", targetElement)
+		return nil, nodesVisitedCount, fmt.Errorf("jalur (BDS meeting) ke '%s' tidak ditemukan", targetElement)
+	}
+
+	fmt.Printf("Hybrid BDS+BFS: Pertemuan di '%s'. Memulai rekonstruksi dan pencarian BFS tambahan...\n", meetingNode)
+
+	// --- Rekonstruksi dan Pencarian BFS Tambahan ---
+	finalRecipe, finalRecipeExists := parentBackward[targetElement]
+	if !finalRecipeExists {
+		recipesForTarget := recipeMap[targetElement]
+		if len(recipesForTarget) > 0 {
+			finalRecipe = recipesForTarget[0]
+			finalRecipeExists = true
+			// fmt.Printf("  INFO: Menggunakan resep fallback untuk target '%s': %v\n", targetElement, finalRecipe)
+		} else {
+			fmt.Printf("  ERROR: Tidak dapat menemukan resep final untuk '%s'.\n", targetElement)
+			return nil, nodesVisitedCount, fmt.Errorf("resep final untuk '%s' tidak ditemukan", targetElement)
+		}
+	}
+	// fmt.Printf("  Resep Final: %s + %s => %s\n", finalRecipe.Ingredient1, finalRecipe.Ingredient2, finalRecipe.Result)
+
+	ing1 := finalRecipe.Ingredient1
+	ing2 := finalRecipe.Ingredient2
+
+	combinedRecipes := make(map[string]Recipe) // Pindahkan deklarasi ke sini
+
+	if meetingNode == ing1 || meetingNode == ing2 {
+		// Kasus 1: Meeting node adalah salah satu bahan final
+		var ingredientToSearchBFS string
+		var pathForMeetingNodeSegment []Recipe
+
+		if meetingNode == ing1 { ingredientToSearchBFS = ing2 } else { ingredientToSearchBFS = ing1 }
+
+		fmt.Printf("  Merekonstruksi jalur FWD untuk meeting node '%s'...\n", meetingNode)
+		stopAtBase := func(node string) bool { return isBaseElement(node) }
+		pathForMeetingNodeSegment = reconstructSingleSegmentPath(parentForward, meetingNode, stopAtBase)
+		fmt.Printf("  Jalur FWD untuk '%s' ditemukan (panjang: %d)\n", meetingNode, len(pathForMeetingNodeSegment))
+
+		fmt.Printf("  Mencari jalur BFS untuk bahan '%s'\n", ingredientToSearchBFS)
+		pathOtherIngredient, bfsNodes, errBFS := FindPathBFS(ingredientToSearchBFS)
+		if errBFS != nil {
+			fmt.Printf("  ERROR: Gagal mencari jalur BFS untuk '%s': %v\n", ingredientToSearchBFS, errBFS)
+			return nil, nodesVisitedCount + bfsNodes, fmt.Errorf("gagal mencari jalur BFS untuk bahan '%s': %v", ingredientToSearchBFS, errBFS)
+		}
+		nodesVisitedCount += bfsNodes
+		fmt.Printf("  Jalur BFS untuk '%s' ditemukan (panjang: %d)\n", ingredientToSearchBFS, len(pathOtherIngredient))
+
+		// Gabungkan resep
+		for _, r := range pathForMeetingNodeSegment { combinedRecipes[getUniqueRecipeKey(r)] = r }
+		for _, r := range pathOtherIngredient { combinedRecipes[getUniqueRecipeKey(r)] = r }
+
+	} else {
+		// Kasus 2: Meeting node bukan bahan final (perlu BFS untuk keduanya)
+		fmt.Printf("  PERINGATAN: Meeting node '%s' bukan bahan langsung. Mencari BFS untuk KEDUA bahan '%s' dan '%s'.\n", meetingNode, ing1, ing2)
+
+		fmt.Printf("  Mencari jalur BFS untuk bahan 1: '%s'\n", ing1)
+		pathIng1, bfsNodes1, err1 := FindPathBFS(ing1)
+		if err1 != nil {
+			fmt.Printf("  ERROR: Gagal mencari jalur BFS untuk '%s': %v\n", ing1, err1)
+			return nil, nodesVisitedCount + bfsNodes1, fmt.Errorf("gagal mencari jalur BFS untuk bahan '%s': %v", ing1, err1)
+		}
+		nodesVisitedCount += bfsNodes1
+		fmt.Printf("  Jalur BFS untuk '%s' ditemukan (panjang: %d)\n", ing1, len(pathIng1))
+		for _, r := range pathIng1 { combinedRecipes[getUniqueRecipeKey(r)] = r }
+
+
+		fmt.Printf("  Mencari jalur BFS untuk bahan 2: '%s'\n", ing2)
+		pathIng2, bfsNodes2, err2 := FindPathBFS(ing2)
+		if err2 != nil {
+			fmt.Printf("  ERROR: Gagal mencari jalur BFS untuk '%s': %v\n", ing2, err2)
+			return nil, nodesVisitedCount + bfsNodes2, fmt.Errorf("gagal mencari jalur BFS untuk bahan '%s': %v", ing2, err2)
+		}
+		nodesVisitedCount += bfsNodes2
+		fmt.Printf("  Jalur BFS untuk '%s' ditemukan (panjang: %d)\n", ing2, len(pathIng2))
+		for _, r := range pathIng2 { combinedRecipes[getUniqueRecipeKey(r)] = r }
+
+		// Kita juga perlu jalur dari meeting node ke base dalam kasus ini
+		fmt.Printf("  Merekonstruksi jalur FWD untuk meeting node '%s' (kasus 2)...\n", meetingNode)
+		stopAtBase := func(node string) bool { return isBaseElement(node) }
+		pathMeetingToBase := reconstructSingleSegmentPath(parentForward, meetingNode, stopAtBase)
+		fmt.Printf("  Jalur FWD untuk '%s' ditemukan (panjang: %d)\n", meetingNode, len(pathMeetingToBase))
+		for _, r := range pathMeetingToBase { combinedRecipes[getUniqueRecipeKey(r)] = r }
+	}
+
+	// Selalu tambahkan resep final
+	combinedRecipes[getUniqueRecipeKey(finalRecipe)] = finalRecipe
+
+	// --- Urutkan Resep Gabungan ---
+	finalPathSorted := buildSortedPathFromRecipes(combinedRecipes, targetElement)
+
+	// Validasi akhir (opsional)
+	if len(finalPathSorted) == 0 && !isBaseElement(targetElement) {
+		fmt.Printf("  PERINGATAN AKHIR: Jalur terurut kosong untuk target non-dasar '%s'.\n", targetElement)
+		// Mungkin ada masalah dalam pengurutan atau resep yang hilang
+	} else if len(finalPathSorted) > 0 && finalPathSorted[len(finalPathSorted)-1].Result != targetElement {
+		fmt.Printf("  PERINGATAN AKHIR: Jalur terurut TIDAK menghasilkan target '%s'. Resep terakhir: %v\n", targetElement, finalPathSorted[len(finalPathSorted)-1].Result)
+	}
+
+	fmt.Printf("Hybrid BDS+BFS: Penggabungan dan pengurutan selesai. Total resep unik terurut: %d\n", len(finalPathSorted))
+	return finalPathSorted, nodesVisitedCount, nil
 }
 
 
-// FindMultiplePathsBDS (tetap sama seperti sebelumnya)
+// FindMultiplePathsBDS: Mencari beberapa jalur unik menggunakan konkurensi.
+// (Fungsi ini tetap sama, hanya memanggil FindPathBDS yang sudah diubah)
 func FindMultiplePathsBDS(targetElement string, maxRecipes int) ([][]Recipe, int, error) {
-	fmt.Printf("Memulai Bidirectional Search (multiple paths, wajib BDS & multithreading) ke: %s, max: %d\n", targetElement, maxRecipes)
+	fmt.Printf("BDS Multiple (Hybrid): Mencari %d jalur ke: %s (Multithreaded)\n", maxRecipes, targetElement)
+	// fmt.Println("CATATAN: Implementasi BDS Multiple saat ini cenderung menemukan jalur terpendek yang sama.")
 
 	if maxRecipes <= 0 {
 		return nil, 0, errors.New("jumlah resep minimal harus 1")
@@ -285,116 +379,75 @@ func FindMultiplePathsBDS(targetElement string, maxRecipes int) ([][]Recipe, int
 	addedPathIdentifiers := make(map[string]bool)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	finalNodesVisited := -1
-
-	foundCount := 0
-
+	nodesVisitedTotal := atomic.Int32{}
+	foundCount := atomic.Int32{}
 	quitChan := make(chan struct{})
 	var quitOnce sync.Once
 	closeQuitChan := func() {
-		quitOnce.Do(func() {
-			close(quitChan)
-		})
+		quitOnce.Do(func() { close(quitChan) })
 	}
 	defer closeQuitChan()
 
 	numGoroutines := maxRecipes
 	if numGoroutines < 1 { numGoroutines = 1 }
-	if numGoroutines > 10 { numGoroutines = 10 }
+	maxGo := 10
+	if numGoroutines > maxGo { numGoroutines = maxGo }
 
-	if numGoroutines == 1 {
-		fmt.Println("BDS Multiple: Mencari 1 jalur (serial)...")
-		path, nodes, err := FindPathBDS(targetElement)
-		finalNodesVisited = nodes
-		if err == nil && path != nil {
-			if len(path) > 0 || (len(path) == 0 && isBaseElement(targetElement)) {
-				allFoundPaths = append(allFoundPaths, path)
-				foundCount = 1
-				fmt.Printf("BDS Multiple (serial): Jalur ditemukan (Panjang: %d), Nodes: %d.\n", len(path), nodes)
-			} else if len(path) == 0 && !isBaseElement(targetElement) {
-                 if err == nil {
-                     err = fmt.Errorf("jalur kosong ditemukan untuk target non-dasar '%s'", targetElement)
-                 }
-            }
-		}
-		if err != nil {
-			return nil, finalNodesVisited, fmt.Errorf("gagal menemukan jalur BDS tunggal: %v", err)
-		}
-		if foundCount == 0 && !isBaseElement(targetElement) {
-			return nil, finalNodesVisited, fmt.Errorf("tidak ada jalur BDS (serial) yang ditemukan untuk '%s'", targetElement)
-		}
-		return allFoundPaths, finalNodesVisited, nil
-	}
+	fmt.Printf("BDS Multiple (Hybrid): Meluncurkan %d goroutine...\n", numGoroutines)
 
-	fmt.Printf("BDS Multiple: Meluncurkan hingga %d goroutine untuk mencari jalur BDS...\n", numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
-		mu.Lock()
-		if foundCount >= maxRecipes {
-			mu.Unlock()
-			break
-		}
-		mu.Unlock()
-
+		if foundCount.Load() >= int32(maxRecipes) { break }
 		wg.Add(1)
 		go func(goroutineIndex int) {
 			defer wg.Done()
-			fmt.Printf("Goroutine BDS-%d: Memulai pencarian FindPathBDS.\n", goroutineIndex)
-			path, _, err := FindPathBDS(targetElement) // Mengabaikan nodes dari goroutine individual
-
+			// Setiap goroutine sekarang menjalankan FindPathBDS (Hybrid)
+			// Path yang dikembalikan sudah diurutkan oleh buildSortedPathFromRecipes
+			path, nodesVisited, err := FindPathBDS(targetElement)
+			nodesVisitedTotal.Add(int32(nodesVisited))
 			mu.Lock()
 			defer mu.Unlock()
-
 			select {
-			case <-quitChan:
-				fmt.Printf("Goroutine BDS-%d: Menerima sinyal quit, hasil tidak ditambahkan.\n", goroutineIndex)
-				return
+			case <-quitChan: return
 			default:
 			}
-
 			if err == nil && path != nil {
+				// Path sudah diurutkan, bisa langsung generate ID
 				if len(path) > 0 {
-					pathID := generatePathIdentifier(path) // Asumsi generatePathIdentifier ada di bfs.go
+					pathID := generatePathIdentifier(path) // ID dari path terurut
 					if !addedPathIdentifiers[pathID] {
-						if foundCount < maxRecipes {
+						if currentFound := foundCount.Load(); currentFound < int32(maxRecipes) {
+							// Salin path sebelum menambahkannya
 							pathToAppend := make([]Recipe, len(path))
 							copy(pathToAppend, path)
 							allFoundPaths = append(allFoundPaths, pathToAppend)
 							addedPathIdentifiers[pathID] = true
-							foundCount++
-							fmt.Printf("Goroutine BDS-%d: Jalur UNIK ditemukan (Panjang: %d). Total Ditemukan: %d\n", goroutineIndex, len(pathToAppend), foundCount)
-							if foundCount >= maxRecipes {
-								closeQuitChan()
-							}
+							newCount := foundCount.Add(1)
+							fmt.Printf("Goroutine Hybrid-%d: Jalur UNIK ditemukan (Panjang: %d). Total Ditemukan: %d/%d\n", goroutineIndex, len(pathToAppend), newCount, maxRecipes)
+							if newCount >= int32(maxRecipes) { closeQuitChan() }
 						}
 					}
-				} else if len(path) == 0 && !isBaseElement(targetElement) {
-					// Jalur kosong untuk target non-dasar bisa diabaikan atau dicatat sebagai error jika tidak diharapkan
 				}
-			} else if err != nil {
-				// fmt.Printf("Goroutine BDS-%d: Error mencari jalur: %v\n", goroutineIndex, err)
 			}
 		}(i)
 	}
 
 	wg.Wait()
-	fmt.Println("BDS Multiple: Semua goroutine pencarian BDS telah selesai.")
-
 	mu.Lock()
-	finalPathsToReturn := allFoundPaths
-	if len(allFoundPaths) > maxRecipes {
-		finalPathsToReturn = allFoundPaths[:maxRecipes]
-	}
+	finalPathsToReturn := make([][]Recipe, len(allFoundPaths))
+	copy(finalPathsToReturn, allFoundPaths)
 	currentFoundCount := len(finalPathsToReturn)
 	mu.Unlock()
 
 	if currentFoundCount == 0 && !isBaseElement(targetElement) {
-		return nil, finalNodesVisited, fmt.Errorf("tidak ada jalur Bidirectional Search (multiple) yang valid ditemukan untuk '%s'", targetElement)
-	}
-	if isBaseElement(targetElement) && currentFoundCount == 1 && len(finalPathsToReturn[0]) == 0 {
-		fmt.Printf("BDS Multiple: Selesai. Target adalah elemen dasar. Ditemukan: %d jalur (kosong).\n", currentFoundCount)
-		return finalPathsToReturn, 0, nil
+		return nil, int(nodesVisitedTotal.Load()), fmt.Errorf("tidak ada jalur Hybrid BDS+BFS (multiple) yang valid ditemukan untuk '%s'", targetElement)
 	}
 
-	fmt.Printf("BDS Multiple: Selesai. Total jalur unik ditemukan: %d dari %d yang diminta.\n", currentFoundCount, maxRecipes)
-	return finalPathsToReturn, finalNodesVisited, nil
+	// Urutkan hasil akhir berdasarkan panjang path (opsional)
+	sort.SliceStable(finalPathsToReturn, func(i, j int) bool {
+		return len(finalPathsToReturn[i]) < len(finalPathsToReturn[j])
+	})
+
+
+	fmt.Printf("BDS Multiple (Hybrid): Selesai. Total jalur unik ditemukan: %d (diminta: %d). Total nodes visited (approx): %d\n", currentFoundCount, maxRecipes, nodesVisitedTotal.Load())
+	return finalPathsToReturn, int(nodesVisitedTotal.Load()), nil
 }
