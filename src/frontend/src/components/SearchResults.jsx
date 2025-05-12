@@ -229,7 +229,7 @@ function SearchResults({ results, isLoading, error }) {
   };
 
   if (isLoading) return <div className="loading-message">Memuat hasil pencarian...</div>;
-  if (error) return <div className="error-message">Error: {(typeof error === 'object' && error.message) ? error.message : String(error)} <img src={notFoundImage} alt="Path Not Found" style={{ marginTop: '20px', maxWidth: '900px' }} /></div>;
+  if (error) return <div className="error-message">Error: {(typeof error === 'object' && error.message) ? error.message : String(error)} <img src={notFoundImage} alt="Path Not Found" style={{ marginTop: '20px', maxWidth: '900px', width: '100%', height: 'auto', objectFit: 'contain' }} /></div>;
   if (!results || typeof results !== 'object') return <p className="initial-message">Silakan masukkan elemen yang ingin dicari.</p>;
 
   return (
