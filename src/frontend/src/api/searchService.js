@@ -33,8 +33,8 @@ async function findRecipes(target, algo, mode, maxRecipes) {
     const response = await fetch(url);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      const backendErrorMessage = errorData.error || 'Unknown API error from backend';
+      //const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      const backendErrorMessage = 'Elemen tidak ditemukan';
       throw new Error(`API Error (${response.status}): ${backendErrorMessage}`);
     }
 
