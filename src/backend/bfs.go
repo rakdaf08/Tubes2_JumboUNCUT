@@ -44,7 +44,6 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 		return []Recipe{}, 0, nil
 	}
 
-	// Inisialisasi
 	queue := list.New()
 	visited := make(map[string]bool, 1000)
 	elementVisited := make(map[string]bool, 1000)
@@ -66,7 +65,6 @@ func FindPathBFS(targetElement string) ([]Recipe, int, error) {
 		fmt.Printf("Enqueue base element: %s\n", base)
 	}
 
-	// BFS traversal
 	for queue.Len() > 0 {
 		currentElement := queue.Remove(queue.Front()).(string)
 		currentDepth := depth[currentElement]
@@ -452,7 +450,7 @@ func FindMultiplePathsBFS(targetElement string, maxRecipes int) ([][]Recipe, int
 								shouldOverride := false
 								if alreadyFound {
 									rnd := (int(nodesVisitedCount.Load()) + workerID + int(resultDepth)) % 100
-									shouldOverride = rnd < 15 // 15% chance
+									shouldOverride = rnd < 15
 								}
 
 								if !alreadyFound || shouldOverride {
