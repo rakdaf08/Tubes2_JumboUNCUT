@@ -1,25 +1,34 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Tree from 'react-d3-tree';
-import './SearchResults.css'; // Pastikan file CSS ini ada dan sesuai
-import notFoundImage from '../assets/notfound_dontol.jpg'; // Pastikan path gambar ini benar
+import './SearchResults.css';
+import notFoundImage from '../assets/notfound_dontol.jpg';
 
-const API_BASE_URL = "http://localhost:8080"; // Sesuaikan jika perlu
-const LIVE_UPDATE_DELAY_MS = 800; // Kecepatan animasi live update
+// API_BASE_URL HANYA untuk panggilan API ke backend, BUKAN untuk path gambar lokal
+// const API_BASE_URL = "http://localhost:8080"; // Ini untuk /api/search, dll.
+// Untuk gambar, kita akan menggunakan path relatif langsung seperti "/image/Fire.png"
 
-// Helper function to check if an element is a base element
+const LIVE_UPDATE_DELAY_MS = 800;
+
 const isBaseElement = (name) => {
-    const baseElements = ["Air", "Earth", "Fire", "Water"]; // Daftar elemen dasar
+    const baseElements = ["Air", "Earth", "Fire", "Water"];
     return baseElements.includes(name);
 };
 
-// Helper function to build the initial node structure for an element
 const buildInitialElementNode = (elementName, imageURLs, depth = 0) => {
+    // DEBUG: Lihat imageURLs dan elementName yang diterima
+    // console.log(`buildInitialElementNode - Element: ${elementName}, ImageURLs Diterima:`, imageURLs);
+
+    // Ambil path gambar dari map imageURLs
     const imageUrlPath = imageURLs && typeof imageURLs === 'object' ? (imageURLs[elementName] || '') : '';
+
+    // DEBUG: Lihat path gambar yang diambil
+    // console.log(`buildInitialElementNode - Element: ${elementName}, Path Gambar Digunakan: ${imageUrlPath}`);
+
     return {
       name: elementName || "Unknown",
       attributes: {
         type: isBaseElement(elementName) ? 'Base Element' : 'Element',
-        imageUrl: imageUrlPath,
+        imageUrl: imageUrlPath, // Ini adalah path relatif seperti "/image/Fire.png"
         depth: depth,
         originalName: elementName || "Unknown",
       },
@@ -27,9 +36,9 @@ const buildInitialElementNode = (elementName, imageURLs, depth = 0) => {
     };
 };
 
-// Recursively builds the full static tree data from a path map
+// buildElementNodeRecursive dan buildFullTreeData tetap sama, mereka akan menggunakan buildInitialElementNode
+// ... (buildElementNodeRecursive dan buildFullTreeData seperti yang Anda berikan sebelumnya) ...
 const buildElementNodeRecursive = (elementName, pathRecipesMap, imageURLs, currentDepth = 0, maxDepth = 20) => {
-    // Batasi kedalaman rekursi untuk mencegah infinite loop atau pohon yang terlalu besar
     if (currentDepth > maxDepth) {
         return {
             name: `${elementName || "Unknown"} (Batas Kedalaman)`,
@@ -37,17 +46,13 @@ const buildElementNodeRecursive = (elementName, pathRecipesMap, imageURLs, curre
             children: []
         };
     }
-
-    // Buat node awal untuk elemen saat ini
     const node = buildInitialElementNode(elementName, imageURLs, currentDepth);
     const recipeMakingThis = pathRecipesMap && typeof pathRecipesMap === 'object' ? pathRecipesMap[elementName] : null;
-
-    // Jika ada resep yang menghasilkan elemen ini, tambahkan node resep dan rekursif ke bawah
     if (recipeMakingThis && typeof recipeMakingThis === 'object' && recipeMakingThis.ingredient1 && recipeMakingThis.ingredient2) {
         const recipeNode = {
-            name: `${recipeMakingThis.ingredient1} + ${recipeMakingThis.ingredient2}`, // Nama node resep
+            name: `${recipeMakingThis.ingredient1} + ${recipeMakingThis.ingredient2}`,
             attributes: {
-                type: 'Recipe', // Tandai sebagai node resep
+                type: 'Recipe',
                 result: recipeMakingThis.result,
                 ingredient1: recipeMakingThis.ingredient1,
                 ingredient2: recipeMakingThis.ingredient2,
@@ -56,46 +61,49 @@ const buildElementNodeRecursive = (elementName, pathRecipesMap, imageURLs, curre
             },
             children: []
         };
-        // Rekursif untuk kedua ingredient
         recipeNode.children.push(buildElementNodeRecursive(recipeMakingThis.ingredient1, pathRecipesMap, imageURLs, currentDepth + 2, maxDepth));
         recipeNode.children.push(buildElementNodeRecursive(recipeMakingThis.ingredient2, pathRecipesMap, imageURLs, currentDepth + 2, maxDepth));
-        // Tambahkan node resep sebagai anak dari node elemen
         node.children.push(recipeNode);
     }
     return node;
 };
 
-// Builds the complete static tree data structure for a given path
 const buildFullTreeData = (path, targetElement, imageURLs) => {
-  // Jika elemen dasar atau path tidak valid, hanya tampilkan node elemen dasar
   if (isBaseElement(targetElement) || !Array.isArray(path) || path.length === 0) {
     return [buildInitialElementNode(targetElement, imageURLs)];
   }
-
-  // Buat map resep untuk pencarian cepat
   const pathRecipesMap = {};
   path.forEach(recipe => {
     if (recipe && typeof recipe === 'object' && recipe.result) {
         pathRecipesMap[recipe.result] = recipe;
     }
   });
-
-  // Mulai bangun pohon secara rekursif dari elemen target
   const rootNode = buildElementNodeRecursive(targetElement, pathRecipesMap, imageURLs);
-  return rootNode ? [rootNode] : [buildInitialElementNode(targetElement, imageURLs)]; // Pastikan selalu mengembalikan array
+  return rootNode ? [rootNode] : [buildInitialElementNode(targetElement, imageURLs)];
 };
 
-// Custom node rendering function for react-d3-tree
+
 const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
     const isRecipeNode = nodeDatum?.attributes?.type === 'Recipe';
     const originalElementName = nodeDatum?.attributes?.originalName || nodeDatum?.name || "N/A";
-    const displayName = isRecipeNode ? `+` : originalElementName; // Tampilkan '+' untuk node resep
+    const displayName = isRecipeNode ? `+` : originalElementName;
+    
+    // partialImageUrl sekarang adalah path relatif seperti "/image/Fire.png"
     const partialImageUrl = nodeDatum?.attributes?.imageUrl;
-    const fullImageUrl = partialImageUrl ? `${API_BASE_URL}${partialImageUrl}` : '';
-    const imageSize = isRecipeNode ? 20 : (isBaseElement(originalElementName) ? 40 : 35); // Ukuran gambar berbeda
-    const textYOffset = isRecipeNode ? 0 : imageSize / 2 + 8; // Posisi teks
+    
+    // TIDAK PERLU API_BASE_URL untuk gambar lokal yang disajikan frontend
+    // const fullImageUrl = partialImageUrl ? `${API_BASE_URL}${partialImageUrl}` : ''; // <--- HAPUS API_BASE_URL
+    const fullImageUrl = partialImageUrl; // <--- GUNAKAN LANGSUNG
 
-    // Kelas CSS berbeda untuk styling
+    // DEBUG: Log path gambar yang akan dirender
+    if (!isRecipeNode && partialImageUrl) {
+        // console.log(`renderNodeWithImage - Merender gambar untuk: ${originalElementName}, Path: ${fullImageUrl}`);
+    }
+
+
+    const imageSize = isRecipeNode ? 20 : (isBaseElement(originalElementName) ? 40 : 35);
+    const textYOffset = isRecipeNode ? 0 : imageSize / 2 + 8;
+
     let nodeClass = "node-element";
     if (isRecipeNode) nodeClass = "node-recipe";
     else if (nodeDatum?.attributes?.type === 'Base Element') nodeClass = "node-base-element";
@@ -103,18 +111,19 @@ const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
 
     return (
       <g onClick={toggleNode} className={`tree-node ${nodeClass}`}>
-        {/* Lingkaran latar belakang */}
         <circle r={isRecipeNode ? 12 : imageSize / 2 + 3} className="node-circle-bg" />
-        {/* Tampilkan gambar jika bukan node resep dan URL valid */}
         {!isRecipeNode && fullImageUrl && (
             <image
               x={-imageSize / 2} y={-imageSize / 2}
               width={imageSize} height={imageSize}
-              href={fullImageUrl} className="element-image"
-              onError={(e) => { e.target.style.display = 'none'; }} // Sembunyikan jika gambar gagal dimuat
+              href={fullImageUrl} // href sekarang menggunakan path relatif langsung
+              className="element-image"
+              onError={(e) => {
+                console.error(`renderNodeWithImage - GAGAL MEMUAT GAMBAR: ${fullImageUrl} untuk elemen ${originalElementName}`);
+                e.target.style.display = 'none';
+              }}
             />
         )}
-        {/* Teks nama elemen atau '+' */}
         <text strokeWidth={isRecipeNode ? "0.4" : "0.5"} x={0} y={textYOffset}
           textAnchor="middle" alignmentBaseline={isRecipeNode ? "middle" : "hanging"}
           className="node-text">
@@ -124,22 +133,24 @@ const renderNodeWithImage = ({ nodeDatum, toggleNode }) => {
     );
 };
 
-// Builds the *next* state of the tree during live update by applying one recipe step
+
+// buildTreeForNextStep perlu menggunakan imageURLs dengan benar
 const buildTreeForNextStep = (currentTreeDataArray, nextRecipeToProcess, allImageURLs) => {
+    // ... (bagian awal fungsi ini mirip) ...
     if (!Array.isArray(currentTreeDataArray) || currentTreeDataArray.length === 0 || !nextRecipeToProcess || typeof nextRecipeToProcess !== 'object') {
-        const rootNode = buildInitialElementNode(nextRecipeToProcess.result, allImageURLs, 0);
+        const rootNode = buildInitialElementNode(nextRecipeToProcess.result, allImageURLs, 0); // Gunakan allImageURLs
         const recipeNode = {
             name: `${nextRecipeToProcess.ingredient1} + ${nextRecipeToProcess.ingredient2}`,
             attributes: { type: 'Recipe', result: nextRecipeToProcess.result, ingredient1: nextRecipeToProcess.ingredient1, ingredient2: nextRecipeToProcess.ingredient2, depth: 1, originalName: `${nextRecipeToProcess.ingredient1} + ${nextRecipeToProcess.ingredient2}` },
             children: [
-                buildInitialElementNode(nextRecipeToProcess.ingredient1, allImageURLs, 2),
-                buildInitialElementNode(nextRecipeToProcess.ingredient2, allImageURLs, 2)
+                buildInitialElementNode(nextRecipeToProcess.ingredient1, allImageURLs, 2), // Gunakan allImageURLs
+                buildInitialElementNode(nextRecipeToProcess.ingredient2, allImageURLs, 2)  // Gunakan allImageURLs
             ]
         };
         rootNode.children = [recipeNode];
         return [rootNode];
     }
-
+    // ... (sisa fungsi findAndExpandNode dan lainnya, pastikan buildInitialElementNode dipanggil dengan allImageURLs) ...
     const newTreeData = JSON.parse(JSON.stringify(currentTreeDataArray));
     const rootNode = newTreeData[0];
     let expanded = false;
@@ -224,21 +235,20 @@ const buildTreeForNextStep = (currentTreeDataArray, nextRecipeToProcess, allImag
     return newTreeData;
 };
 
-// --- Komponen Utama SearchResults ---
+
 function SearchResults({ results, isLoading, error }) {
   const [liveUpdateStates, setLiveUpdateStates] = useState({});
   const [treeDataForStaticView, setTreeDataForStaticView] = useState({});
 
-  // Efek untuk membangun data pohon statis dan RESET LIVE UPDATE saat hasil pencarian berubah
   useEffect(() => {
-    // ***** PERBAIKAN: Reset liveUpdateStates setiap kali 'results' baru diterima *****
     setLiveUpdateStates({});
-    // *******************************************************************************
+    console.log("SearchResults DEBUG: Menerima `results` baru:", JSON.stringify(results, null, 2)); // Log `results` yang diterima
 
     try {
         const newStaticData = {};
         if (results && results.pathFound) {
             const imageURLs = results.imageURLs || {};
+            console.log("SearchResults DEBUG: `imageURLs` yang akan digunakan untuk pohon statis:", imageURLs); // Log imageURLs
             if (results.mode === 'shortest' && Array.isArray(results.path)) {
                 const pathKey = `path-block-shortest-0`;
                 newStaticData[pathKey] = buildFullTreeData(results.path, results.searchTarget, imageURLs);
@@ -253,16 +263,21 @@ function SearchResults({ results, isLoading, error }) {
                 const pathKey = `path-block-${results.searchTarget}-base`;
                 newStaticData[pathKey] = buildFullTreeData([], results.searchTarget, imageURLs);
             }
+        } else if (results) {
+            console.log("SearchResults DEBUG: results.pathFound adalah false atau results tidak ada. Target:", results.searchTarget);
         }
         setTreeDataForStaticView(newStaticData);
     } catch (e) {
         console.error("Error saat membangun treeDataForStaticView:", e);
         setTreeDataForStaticView({});
     }
-  }, [results]); // Jalankan ulang saat `results` berubah
+  }, [results]);
 
+  // ... (startLiveUpdate dan useEffect untuk live update tetap sama, pastikan mereka menggunakan imageURLs dengan benar) ...
   const startLiveUpdate = useCallback((pathKey, originalPathData, targetElement, imageURLsInput) => {
-    const imageURLs = imageURLsInput || {};
+    const imageURLs = imageURLsInput || {}; // Gunakan imageURLs yang diterima
+    console.log(`startLiveUpdate DEBUG: PathKey: ${pathKey}, Target: ${targetElement}, ImageURLs:`, imageURLs);
+    // ... sisa fungsi ...
     if (isBaseElement(targetElement) || !Array.isArray(originalPathData) || originalPathData.length === 0) {
       setLiveUpdateStates(prev => ({
           ...prev,
@@ -332,7 +347,7 @@ function SearchResults({ results, isLoading, error }) {
             if (!currentPathState || !currentPathState.isActive || !currentPathState.isBuilding) return prev;
 
             const nextRecipe = currentPathState.fullPathRecipes[currentPathState.currentRecipeStep];
-            const imageURLs = results?.imageURLs || {};
+            const imageURLs = results?.imageURLs || {}; // Ambil dari results prop
             const partiallyUpdatedTree = buildTreeForNextStep(currentPathState.currentDisplayData, nextRecipe, imageURLs);
             const needsMoreExpansionForThisRecipe = checkIfExpansionNeeded(partiallyUpdatedTree, nextRecipe.result, nextRecipe);
             const nextStepIndex = needsMoreExpansionForThisRecipe
@@ -365,28 +380,46 @@ function SearchResults({ results, isLoading, error }) {
     return () => timers.forEach(id => { if (id) clearTimeout(id); });
   }, [liveUpdateStates, results?.imageURLs, checkIfExpansionNeeded]);
 
-  const handleImageError = (e) => { e.target.style.display = 'none'; };
+
+  const handleImageError = (e, elementName, imageUrlAttempted) => {
+    console.error(`SearchResults DEBUG: Gagal memuat gambar untuk elemen '${elementName}' dari path '${imageUrlAttempted}'`);
+    e.target.style.display = 'none'; // Sembunyikan gambar yang gagal
+    // Anda bisa menggantinya dengan placeholder jika mau: e.target.src = '/path/to/placeholder.png';
+  };
 
   const renderStep = (step, stepIndex, pathIndex = null) => {
     if (!step || typeof step !== 'object' || !step.result) return <li key={`invalid-step-${pathIndex}-${stepIndex}`} className="recipe-step-item invalid">Data langkah tidak valid</li>;
     const key = `${pathIndex !== null ? pathIndex + '-' : ''}${stepIndex}`;
-    const imageURLs = results?.imageURLs || {};
-    const imageUrl1 = imageURLs[step.ingredient1] ? `${API_BASE_URL}${imageURLs[step.ingredient1]}` : '';
-    const imageUrl2 = imageURLs[step.ingredient2] ? `${API_BASE_URL}${imageURLs[step.ingredient2]}` : '';
-    const imageUrlResult = imageURLs[step.result] ? `${API_BASE_URL}${imageURLs[step.result]}` : '';
+    const imageURLs = results?.imageURLs || {}; // Ambil dari results prop
+
+    // DEBUG: Log path gambar untuk setiap langkah resep
+    const imgPath1 = imageURLs[step.ingredient1] || '';
+    const imgPath2 = imageURLs[step.ingredient2] || '';
+    const imgPathResult = imageURLs[step.result] || '';
+
+    // console.log(`renderStep DEBUG: Step ${stepIndex}, Ing1: ${step.ingredient1}, Path1: ${imgPath1}`);
+    // console.log(`renderStep DEBUG: Step ${stepIndex}, Ing2: ${step.ingredient2}, Path2: ${imgPath2}`);
+    // console.log(`renderStep DEBUG: Step ${stepIndex}, Result: ${step.result}, PathRes: ${imgPathResult}`);
+
+    // TIDAK PERLU API_BASE_URL untuk path relatif
+    const imageUrl1 = imgPath1;
+    const imageUrl2 = imgPath2;
+    const imageUrlResult = imgPathResult;
+
     return (
       <li key={key} className="recipe-step-item">
-        {imageUrl1 ? <img src={imageUrl1} alt={step.ingredient1 || ''} className="recipe-step-image" onError={handleImageError}/> : <span className="img-placeholder"></span>}
+        {imageUrl1 ? <img src={imageUrl1} alt={step.ingredient1 || ''} className="recipe-step-image" onError={(e) => handleImageError(e, step.ingredient1, imageUrl1)}/> : <span className="img-placeholder">?</span>}
         {step.ingredient1 || '?'}
         <span className="recipe-step-separator">+</span>
-        {imageUrl2 ? <img src={imageUrl2} alt={step.ingredient2 || ''} className="recipe-step-image" onError={handleImageError}/> : <span className="img-placeholder"></span>}
+        {imageUrl2 ? <img src={imageUrl2} alt={step.ingredient2 || ''} className="recipe-step-image" onError={(e) => handleImageError(e, step.ingredient2, imageUrl2)}/> : <span className="img-placeholder">?</span>}
         {step.ingredient2 || '?'}
         <span className="recipe-step-separator">{' => '}</span>
-        {imageUrlResult ? <img src={imageUrlResult} alt={step.result} className="recipe-step-image" onError={handleImageError}/> : <span className="img-placeholder"></span>}
+        {imageUrlResult ? <img src={imageUrlResult} alt={step.result} className="recipe-step-image" onError={(e) => handleImageError(e, step.result, imageUrlResult)}/> : <span className="img-placeholder">?</span>}
         <strong className="recipe-step-result">{step.result}</strong>
       </li>);
   };
 
+  // ... (renderPath, dan bagian return utama tetap sama) ...
   const renderPath = (path, pathIndex = null) => {
     if (!Array.isArray(path)) return <p key={pathIndex !== null ? `invalid-path-data-${pathIndex}` : 'invalid-single-path-data'} className="invalid-path-message">Data jalur tidak valid.</p>;
     if (path.length === 0 && !isBaseElement(results?.searchTarget)) return <p key={pathIndex !== null ? `empty-path-${pathIndex}` : 'empty-single-path'} className="recipe-path-list-empty">(Tidak ada langkah resep)</p>;
@@ -421,7 +454,7 @@ function SearchResults({ results, isLoading, error }) {
 
            {results.mode === 'shortest' && Array.isArray(results.path) && results.path.length > 0 && (() => {
                 const pathKey = `path-block-shortest-0`;
-                const currentLiveState = liveUpdateStates[pathKey]; // Akan undefined setelah reset jika pathKey baru
+                const currentLiveState = liveUpdateStates[pathKey]; 
                 const staticTreeData = treeDataForStaticView[pathKey];
                 const treeToDisplay = currentLiveState?.isActive && currentLiveState.currentDisplayData ? currentLiveState.currentDisplayData : staticTreeData;
                 return (
@@ -448,7 +481,7 @@ function SearchResults({ results, isLoading, error }) {
                                         renderCustomNodeElement={renderNodeWithImage} zoomable={true} draggable={true}
                                         nodeSize={{ x: 140, y: 120 }} separation={{ siblings: 1.2, nonSiblings: 1.5 }}
                                         pathFunc="straight" depthFactor={150}
-                                        key={currentLiveState?.pathIdentifier || `static-tree-${pathKey}-${results.searchTarget}`} // Tambahkan searchTarget ke key statis
+                                        key={currentLiveState?.pathIdentifier || `static-tree-${pathKey}-${results.searchTarget}`} 
                                     />
                                  </div>
                            </div>
@@ -462,7 +495,7 @@ function SearchResults({ results, isLoading, error }) {
                 if (path.length === 0 && isBaseElement(results.searchTarget)) return null;
 
                 const pathKey = `path-block-multiple-${index}`;
-                const currentLiveState = liveUpdateStates[pathKey]; // Akan undefined setelah reset
+                const currentLiveState = liveUpdateStates[pathKey]; 
                 const staticTreeData = treeDataForStaticView[pathKey];
                 const treeToDisplay = currentLiveState?.isActive && currentLiveState.currentDisplayData ? currentLiveState.currentDisplayData : staticTreeData;
                 return (
@@ -489,7 +522,7 @@ function SearchResults({ results, isLoading, error }) {
                                          renderCustomNodeElement={renderNodeWithImage} zoomable={true} draggable={true}
                                          nodeSize={{ x: 140, y: 120 }} separation={{ siblings: 1.2, nonSiblings: 1.5 }}
                                          pathFunc="straight" depthFactor={150}
-                                         key={currentLiveState?.pathIdentifier || `static-tree-${pathKey}-${results.searchTarget}`} // Tambahkan searchTarget ke key statis
+                                         key={currentLiveState?.pathIdentifier || `static-tree-${pathKey}-${results.searchTarget}`} 
                                      />
                                  </div>
                            </div>
@@ -498,7 +531,7 @@ function SearchResults({ results, isLoading, error }) {
             })}
            </>
        ) : (
-            results && results.searchTarget &&
+            results && results.searchTarget && // Hanya tampilkan pesan ini jika results ada dan punya searchTarget
             <div className="path-not-found-message">
                  Jalur tidak ditemukan untuk elemen "{results.searchTarget}".
                  {results.error ? ` (Error: ${results.error})` : ''}

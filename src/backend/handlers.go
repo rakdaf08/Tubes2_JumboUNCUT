@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
-	"os" // Diperlukan untuk os.Stat
-	"path/filepath" // Diperlukan untuk filepath.Join
 	"strconv"
 	"strings"
 	"time"
@@ -27,63 +24,6 @@ type MultiSearchResponse struct {
 	NodesVisited   int               `json:"nodesVisited"`
 	DurationMillis int64             `json:"durationMillis"`
 	Error          string            `json:"error,omitempty"`
-}
-
-
-// imageHandler SEKARANG akan menyajikan file lokal
-func imageHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "Metode tidak diizinkan", http.StatusMethodNotAllowed)
-		return
-	}
-
-	elementName := r.URL.Query().Get("elementName")
-	if elementName == "" {
-		http.Error(w, "Parameter 'elementName' diperlukan", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Menerima permintaan gambar lokal untuk elemen: %s\n", elementName)
-
-	// Asumsi nama file adalah NamaElemen.png
-	// Pastikan nama elemen tidak mengandung karakter yang tidak valid untuk path.
-	// Sanitasi sederhana jika diperlukan, meskipun nama elemen Anda mungkin sudah aman.
-	// safeElementName := sanitizeElementNameForPath(elementName) // Anda mungkin perlu fungsi ini
-	safeElementName := elementName // Jika nama elemen sudah aman
-
-	// Path relatif terhadap direktori kerja aplikasi backend Anda.
-	// Jika main.go ada di "backend/", maka path ini akan menjadi "backend/data/image/ElementName.png"
-	// Jika Anda menjalankan dari direktori lain, Anda mungkin perlu menyesuaikan basis path.
-	// Untuk konsistensi, kita bisa coba buat path absolut dari CWD + path relatif yang diinginkan.
-	// CWD (Current Working Directory) adalah tempat binary backend dijalankan.
-	// Jika binary ada di "backend/", dan folder data di "backend/data/", maka:
-	imageFileName := safeElementName + ".png"
-	imagePath := filepath.Join("data", "image", imageFileName) // Path relatif dari CWD
-
-	// Untuk logging atau debugging, Anda bisa mencetak path absolutnya
-	// absImagePath, _ := filepath.Abs(imagePath)
-	// log.Printf("Mencoba menyajikan file dari: %s (relatif: %s)\n", absImagePath, imagePath)
-
-
-	// Periksa apakah file ada sebelum menyajikannya
-	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-		log.Printf("File gambar tidak ditemukan di path: %s untuk elemen: %s\n", imagePath, elementName)
-		http.Error(w, fmt.Sprintf("Gambar untuk '%s' tidak ditemukan", elementName), http.StatusNotFound)
-		return
-	} else if err != nil {
-		log.Printf("Error saat memeriksa file gambar %s: %v\n", imagePath, err)
-		http.Error(w, "Internal server error saat memeriksa gambar", http.StatusInternalServerError)
-		return
-	}
-
-
-	// Set Content-Type karena kita tahu ini PNG
-	w.Header().Set("Content-Type", "image/png")
-	http.ServeFile(w, r, imagePath) // Menyajikan file
-	log.Printf("Gambar '%s' berhasil disajikan dari '%s'.\n", elementName, imagePath)
 }
 
 
@@ -248,8 +188,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		for elementName := range elementsInPaths {
 			// URL tetap menunjuk ke endpoint /api/image
 			// Backend yang akan menangani penyajian file lokal dari endpoint tersebut
-			proxyUrl := fmt.Sprintf("/api/image?elementName=%s", url.QueryEscape(elementName))
-			response.ImageURLs[elementName] = proxyUrl
+			imagePath := fmt.Sprintf("/image/%s.png", elementName)
+        	response.ImageURLs[elementName] = imagePath
 		}
 	}
 
