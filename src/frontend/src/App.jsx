@@ -9,25 +9,23 @@ import jumboKocokLogo from './assets/Jumbo_Kocok.png';
 import clickToStartImage from './assets/ClickToStart.png';
 import sansImage from './assets/sans.jpg';
 
-// Definisikan di luar komponen karena tidak berubah
 const FULL_DIALOG_TEXT = "* Please enter the recipe you are looking for";
 const TYPING_DELAY_START_MS = 450;
 const TYPING_SPEED_MS = 70;
 
 function App() {
-  const [appState, setAppState] = useState('splash'); // 'splash', 'logoMoving', 'sansAppearing', 'contentReady'
-  const [logoPositionClass, setLogoPositionClass] = useState('center'); // 'center', 'topLeft'
+  const [appState, setAppState] = useState('splash'); 
+  const [logoPositionClass, setLogoPositionClass] = useState('center'); 
   const [resultsViewActive, setResultsViewActive] = useState(false);
 
   const [searchResultsData, setSearchResultsData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  // eslint-disable-next-line no-unused-vars
   const [currentParams, setCurrentParams] = useState(null);
 
   const [dialogText, setDialogText] = useState('');
   const [isDialogTyping, setIsDialogTyping] = useState(false);
-  const [isInitialTypingComplete, setIsInitialTypingComplete] = useState(false); // State baru untuk melacak penyelesaian ketikan awal
+  const [isInitialTypingComplete, setIsInitialTypingComplete] = useState(false); 
 
   const handleInitialClick = () => {
     if (appState === 'splash') {
@@ -36,13 +34,12 @@ function App() {
     }
   };
 
-  // useEffect untuk transisi state utama aplikasi
   useEffect(() => {
     let timer;
     if (appState === 'logoMoving') {
       timer = setTimeout(() => {
         setAppState('sansAppearing');
-      }, 1000); // Durasi animasi logo bergerak
+      }, 1000); 
     } else if (appState === 'sansAppearing') {
       const dialogBoxAnimationDuration = 1000;
       const sansAppearanceTime = 700;
@@ -55,7 +52,7 @@ function App() {
         sansAppearanceTime,
         totalTypingTimeMs,
         searchFormTransitionDelay
-      ) + 200; // Tambahan buffer kecil
+      ) + 200; 
 
       timer = setTimeout(() => {
         setAppState('contentReady');
@@ -64,15 +61,13 @@ function App() {
     return () => clearTimeout(timer);
   }, [appState]);
 
-  // useEffect untuk animasi ketik dialog
   useEffect(() => {
     let typingTimerId;
 
     if (appState === 'sansAppearing' && !isInitialTypingComplete) {
-      // Mulai mengetik hanya jika di 'sansAppearing' dan ketikan awal belum selesai
-      setDialogText(''); // Reset teks
+      setDialogText(''); 
       setIsDialogTyping(true);
-      let currentCharIndex = 0; // Indeks karakter lokal untuk sesi ketikan ini
+      let currentCharIndex = 0; 
 
       const typeCharacter = () => {
         if (currentCharIndex < FULL_DIALOG_TEXT.length) {
@@ -81,41 +76,35 @@ function App() {
           typingTimerId = setTimeout(typeCharacter, TYPING_SPEED_MS);
         } else {
           setIsDialogTyping(false);
-          setIsInitialTypingComplete(true); // Tandai bahwa ketikan awal telah selesai
+          setIsInitialTypingComplete(true); 
         }
       };
       typingTimerId = setTimeout(typeCharacter, TYPING_DELAY_START_MS);
 
     } else if (appState === 'contentReady') {
-      // Jika appState adalah 'contentReady'
       if (!isInitialTypingComplete) {
-        // Jika karena suatu alasan ketikan awal belum ditandai selesai (sebagai fallback)
-        setDialogText(FULL_DIALOG_TEXT); // Langsung set teks penuh
+        setDialogText(FULL_DIALOG_TEXT); 
         setIsDialogTyping(false);
-        setIsInitialTypingComplete(true); // Tandai selesai
+        setIsInitialTypingComplete(true); 
       } else {
-        // Jika ketikan awal sudah selesai, pastikan kursor ketik mati
         setIsDialogTyping(false);
       }
     } else if (appState === 'splash' || appState === 'logoMoving') {
-      // Reset semua saat kembali ke state awal
       setDialogText('');
       setIsDialogTyping(false);
-      setIsInitialTypingComplete(false); // Reset status penyelesaian ketikan
+      setIsInitialTypingComplete(false); 
     } else if (resultsViewActive) {
-      // Jika tampilan hasil aktif, pastikan teks penuh dan kursor mati
       setDialogText(FULL_DIALOG_TEXT);
       setIsDialogTyping(false);
       if (!isInitialTypingComplete) {
-        // Jika belum selesai, tandai juga sebagai selesai karena kita pindah ke tampilan hasil
         setIsInitialTypingComplete(true);
       }
     }
 
     return () => {
-      clearTimeout(typingTimerId); // Bersihkan timeout jika komponen unmount atau effect berjalan lagi
+      clearTimeout(typingTimerId); 
     };
-  }, [appState, resultsViewActive, isInitialTypingComplete]); // Dependensi effect
+  }, [appState, resultsViewActive, isInitialTypingComplete]);
 
 
   const handleSearchSubmit = async (searchParams) => {

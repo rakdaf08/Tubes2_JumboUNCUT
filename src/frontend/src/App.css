@@ -1,94 +1,87 @@
 /* frontend/src/App.css */
 @import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap');
 
-/* Container utama aplikasi */
 .App-container {
   width: 100%;
   min-height: 100vh;
   background-color: #000000;
-  position: relative; /* Konteks posisi untuk elemen absolut di dalamnya */
-  overflow: hidden; /* Sembunyikan apa pun yang keluar dari viewport */
+  position: relative;
+  overflow: hidden; 
   display: flex;
-  /* Default flex-direction adalah row, akan diubah saat results-view-active */
-  flex-direction: column; /* Untuk splash dan tampilan awal terpusat */
-  justify-content: center; /* Untuk splash dan tampilan awal terpusat */
-  align-items: center; /* Untuk splash dan tampilan awal terpusat */
+  flex-direction: column; 
+  justify-content: center; 
+  align-items: center;
   transition: padding-top 0.5s ease-in-out;
-  font-family: 'Pixelify Sans', sans-serif; /* Menggunakan Pixelify Sans */
+  font-family: 'Pixelify Sans', sans-serif; 
 }
 
-/* Styling untuk logo utama yang akan dianimasikan */
 .main-logo {
   position: absolute;
   transition: top 1s ease-in-out, left 1s ease-in-out, transform 1s ease-in-out,
               max-width 1s ease-in-out, max-height 1s ease-in-out;
   z-index: 10;
-  height: auto; /* Agar rasio aspek terjaga */
+  height: auto;
 }
 
 .main-logo.center {
-  top: 40%; /* Lebih fleksibel dengan persentase */
+  top: 40%; 
   left: 50%;
   transform: translate(-50%, -50%) scale(1);
-  max-width: 70vw; /* Maksimum 70% lebar viewport */
-  max-height: 30vh; /* Maksimum 30% tinggi viewport */
+  max-width: 70vw; 
+  max-height: 30vh; 
 }
 
 .main-logo.topLeft {
   top: 50px;
   left: 50px;
-  transform: translate(0, 0) scale(1); /* Sedikit lebih kecil di pojok */
-  max-width: 3000px; /* Ukuran tetap di pojok */
+  transform: translate(0, 0) scale(1); 
+  max-width: 3000px; 
   max-height: 60px;
 }
 
-/* Konten Splash Screen Awal */
 .splash-initial-content {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  position: absolute; /* Mengisi seluruh App-container */
+  position: absolute; 
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 5; /* Di bawah logo jika logo masih di tengah, tapi di atas konten lain */
+  z-index: 5; 
 }
 
 .splash-start-text {
-  max-width: 200px; /* Ukuran tetap agar tidak terlalu besar/kecil */
-  width: 40vw; /* Responsif tapi dengan batasan max-width */
+  max-width: 200px; 
+  width: 40vw; 
   height: auto;
-  margin-top: 30vh; /* Jarak dari atas, mungkin perlu disesuaikan dengan media query tinggi */
+  margin-top: 30vh;
   opacity: 1;
   transition: opacity 0.3s ease-out;
   animation: blinkAnimation 1.5s infinite;
 }
 
-/* Sembunyikan splash text saat transisi atau state lain */
 .App-container.current-state-logoMoving .splash-start-text,
 .App-container.current-state-sansAppearing .splash-start-text,
 .App-container.current-state-contentReady .splash-start-text,
 .App-container.results-view-active .splash-start-text {
   opacity: 0;
-  pointer-events: none; /* Agar tidak bisa diklik saat tersembunyi */
+  pointer-events: none;
   animation: none;
 }
 
-/* Styling untuk gambar Sans */
 .sans-image {
-  position: absolute; /* Sesuaikan agar ada ruang untuk dialog & form di bawahnya */
+  position: absolute;
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0;
-  max-width: 250px; /* Batasan ukuran Sans */
+  max-width: 250px; 
   width: 100vw;
-   /* Batasan tinggi Sans */
   height: auto;
-  z-index: 6; /* Di atas splash, di bawah dialog jika perlu, atau sejajar */
-  transition: opacity 0.5s ease-out 0.2s, /* Muncul setelah logo bergerak */
+  z-index: 6;
+  transition: opacity 0.5s ease-out 0.2s,
               max-width 0.5s ease-in-out, width 0.5s ease-in-out,
               transform 0.5s ease-in-out,
               top 0.5s ease-in-out, left 0.5s ease-in-out;
@@ -99,48 +92,39 @@
   animation: sansBobbingInitial 2s ease-in-out 0.2s infinite;
 }
 
-/* Kontainer untuk dialog dan form */
 .dialog-and-form-container {
   position: absolute;
-  top: 58%; /* Posisi vertikal untuk kontainer dialog dan form */
+  top: 58%; 
   left: 50%;
   transform: translateX(-50%);
-  width: 70%; /* Lebar kontainer */ /* Batas lebar maksimum */
+  width: 70%;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Pusatkan dialog dan form di dalamnya */
+  align-items: center; 
   z-index: 7;
-  opacity: 0; /* Awalnya transparan, akan dimunculkan oleh .visible */
-  transition: opacity 0.6s ease-out 0.4s; /* Transisi untuk kemunculan kontainer */
+  opacity: 0; 
+  transition: opacity 0.6s ease-out 0.4s; 
 }
 
 .dialog-and-form-container.visible {
   opacity: 1;
 }
 
-/* Styling untuk Kotak Dialog */
 .dialog-box {
-  /* Tidak lagi position absolute, mengalir dalam .dialog-and-form-container */
-  width: 100%; /* Mengisi lebar .dialog-and-form-container */
-  min-height: 150px; /* Tinggi minimal, bisa disesuaikan */
+  width: 100%; 
+  min-height: 150px; 
   background-color: #000000;
   border: 4px solid #ffffff;
   border-radius: 5px;
   padding:20px 25px;
   box-sizing: border-box;
   color: #ffffff;
-  /* Opacity dan transform untuk animasi kemunculan dialog itu sendiri */
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s,
               min-height 0.5s ease-in-out, padding 0.5s ease-in-out;
 }
 
-/* Terapkan .visible pada .dialog-box melalui state di App.jsx jika perlu animasi terpisah,
-   atau biarkan .dialog-and-form-container.visible yang mengontrolnya.
-   Jika .dialog-and-form-container sudah .visible, maka dialog-box juga akan visible.
-   Untuk animasi individual dialog setelah container muncul:
-*/
 .dialog-and-form-container.visible .dialog-box {
   opacity: 1;
   transform: translateY(0);
@@ -148,13 +132,13 @@
 
 
 .dialog-text {
-  margin-top: 0; /* Hapus margin default p jika ada */
+  margin-top: 0; 
   margin-left: 0;
-  font-size: clamp(26px, 2vw, 20px); /* Ukuran font responsif */
+  font-size: clamp(26px, 2vw, 20px); 
   line-height: 1.4;
-  white-space: pre-wrap; /* Agar baris baru dari teks dihormati */
-  position: relative; /* Untuk cursor */
-  text-align: left; /* Teks dialog rata kiri */
+  white-space: pre-wrap; 
+  position: relative;
+  text-align: left;
 }
 
 .typing-cursor-char {
@@ -164,49 +148,40 @@
   margin-left: 1px;
 }
 
-/* Wrapper untuk SearchForm */
 .search-form-wrapper {
-  /* Tidak lagi position absolute */
-  width: 100%; /* Mengisi lebar .dialog-and-form-container */
-  max-width: 100%; /* Bisa lebih kecil jika diinginkan, misal 90% dan margin auto */
-  margin-top: 20px; /* JARAK DARI DIALOG BOX DI ATASNYA */
+  width: 100%; 
+  max-width: 100%; 
+  margin-top: 20px; 
   box-sizing: border-box;
-  opacity: 0; /* Awalnya transparan */
-  transition: opacity 0.5s ease-in-out 0.6s, /* Muncul setelah dialog (delay disesuaikan) */
+  opacity: 0; 
+  transition: opacity 0.5s ease-in-out 0.6s,
               margin-top 0.5s ease-in-out;
 }
 
-/* Kontrol kemunculan search form melalui state di App.jsx */
 .dialog-and-form-container.visible .search-form-wrapper {
- /* Ini akan aktif jika showSearchForm true di JSX dan container sudah visible */
- /* Jika ingin animasi terpisah setelah dialog: */
- /* opacity: 0; transition: opacity 0.5s ease-in-out 1s; (delay dari awal) */
 }
-/* Atau lebih sederhana, jika search form muncul bersamaan dengan dialog (setelah container visible) */
 .App-container.current-state-contentReady .dialog-and-form-container.visible .search-form-wrapper,
 .App-container.results-view-active .dialog-and-form-container.visible .search-form-wrapper {
   opacity: 1;
 }
 
 
-/* Tata Letak untuk Results View Active */
 .App-container.results-view-active {
-  flex-direction: row; /* Kembali ke row untuk side-by-side panel */
+  flex-direction: row; 
   justify-content: flex-start;
   align-items: flex-start;
-  padding-top: 0px; /* Ruang untuk logo yang pindah ke atas */
-  overflow: hidden; /* Tetap hidden untuk menghindari scrollbar global yang tidak diinginkan */
+  padding-top: 0px; 
+  overflow: hidden; 
 }
 
 .left-panel {
-  /* Awalnya mengisi semua ruang atau sesuai flex di App-container */
   width: 100%;
-  height: 100%; /* Mengisi tinggi App-container */
-  display: flex; /* Untuk memusatkan konten awal (sans, dialog-form-container) */
+  height: 100%; 
+  display: flex; 
   flex-direction: column;
-  justify-content: center; /* Ini mungkin perlu disesuaikan jika sans dan dialog-form beda posisi */
+  justify-content: center; 
   align-items: center;
-  position: relative; /* Konteks untuk elemen absolut di dalamnya jika ada */
+  position: relative; 
   transition: width 0.5s ease-in-out, padding 0.5s ease-in-out, height 0.5s ease-in-out;
   z-index: 5;
   background-color: #000000;
@@ -214,12 +189,11 @@
 
 .App-container.results-view-active .left-panel {
   width: 33.33%;
-  height: calc(100vh); /* Tinggi panel dikurangi padding-top App-container */
-  overflow-y: auto; /* Scroll jika konten lebih panjang */
+  height: calc(100vh); 
+  overflow-y: auto; 
   padding: 15px;
-  /* flex-direction: column; sudah default dari atas */
-  justify-content: flex-start; /* Konten mulai dari atas */
-  align-items: center; /* Pusatkan item di left-panel */
+  justify-content: flex-start;
+  align-items: center; 
   border-right: 2px solid #000000;
   box-sizing: border-box;
 }
@@ -229,56 +203,54 @@
   opacity: 0;
   visibility: hidden;
   transition: width 0.5s ease-in-out, opacity 0.5s ease-in-out 0.1s, visibility 0s linear 0.6s;
-  height: calc(100vh); /* Sama dengan left-panel */
-  overflow-y: auto; /* Scroll jika konten lebih panjang */
+  height: calc(100vh); 
+  overflow-y: auto; 
   padding: 60px 15px 15px 15px;
   box-sizing: border-box;
-  background-color: #000000; /* Warna latar beda untuk panel hasil */
+  background-color: #000000; 
 }
 
 .App-container.results-view-active .right-panel {
   width: 66.67%;
   opacity: 1;
   visibility: visible;
-  transition-delay: 0s, 0.1s, 0s; /* Sesuaikan delay transisi */
+  transition-delay: 0s, 0.1s, 0s; 
 }
 
-/* Penyesuaian elemen untuk Results Mode */
+
 .App-container.results-view-active .main-logo.results-mode {
-  /* Posisi sudah diatur oleh .topLeft */
   left: -2%;
   top: 10px;
-  transform: translate(0, 0) scale(0.55); /* Mungkin perlu disesuaikan lagi */
+  transform: translate(0, 0) scale(0.55); 
 }
 
 .App-container.results-view-active .sans-image.results-mode {
-  position: relative; /* Kembali ke alur normal di dalam .left-panel */
+  position: relative; 
   top: auto;
   left: auto;
-  transform: none; /* Hapus transform pemusatan absolut */
-  animation: bobbingAnimation 2s ease-in-out infinite; /* Animasi bobbing yang lebih kecil */
-  max-width: 1000px; /* Ukuran Sans lebih kecil di panel */
-  width: 50%; /* Relatif terhadap .left-panel */
+  transform: none;
+  animation: bobbingAnimation 2s ease-in-out infinite;
+  max-width: 1000px; 
+  width: 50%; 
   margin-top: 40px;
   margin-bottom: 10px;
-  opacity: 1; /* Pastikan visible */
+  opacity: 1; 
 }
 
 .App-container.results-view-active .dialog-and-form-container.results-mode {
-  position: static; /* Kembali ke alur normal di dalam .left-panel */
+  position: static; 
   transform: none;
-  width: 90%; /* Mengisi .left-panel 
+  width: 90%;  
   top: auto;
   left: auto;
-  opacity: 1; /* Pastikan visible */
-  margin-bottom: 15px; /* Jarak bawah jika ada elemen lain di left-panel */
+  opacity: 1; 
+  margin-bottom: 15px; 
 }
 
 .App-container.results-view-active .dialog-box.results-mode {
-  /* Style sudah diatur oleh .dialog-box biasa dan parent .dialog-and-form-container */
-  width: 100%; /* Mengisi parent */
-  min-height: auto; /* Biarkan tinggi menyesuaikan konten */
-  margin-bottom: 10px; /* Jarak ke form jika form masih ada */
+  width: 100%;
+  min-height: auto;
+  margin-bottom: 10px;
   height :200px;
   padding: 20px 25px;
   opacity: 1;
@@ -286,26 +258,24 @@
 }
 
 .App-container.results-view-active .dialog-box.results-mode .dialog-text {
-  font-size: clamp(24 px, 1.5vw, 16px); /* Font lebih kecil di panel */
+  font-size: clamp(24 px, 1.5vw, 16px); 
 }
 
 .App-container.results-view-active .search-form-wrapper.results-mode {
-  /* Style sudah diatur oleh .search-form-wrapper biasa dan parent */
   width: 100%;
-  margin-top: 10px; /* Reset margin-top, jarak diatur oleh .dialog-box margin-bottom */
+  margin-top: 10px; 
   opacity: 1;
   transform: none;
 }
 
 
-/* Keyframes */
 @keyframes sansBobbingInitial {
   0%   { transform: translate(-50%, -50%) translateY(0px); }
   50%  { transform: translate(-50%, -50%) translateY(-8px); }
   100% { transform: translate(-50%, -50%) translateY(0px); }
 }
 
-@keyframes bobbingAnimation { /* Untuk Sans di left-panel */
+@keyframes bobbingAnimation { 
   0%   { transform: translateY(0); }
   50%  { transform: translateY(-6px); }
   100% { transform: translateY(0); }
@@ -316,13 +286,12 @@
   50% { opacity: 0; }
 }
 
-@keyframes blinkAnimation { /* Untuk splash text */
+@keyframes blinkAnimation {
   0% { opacity: 1; }
   50% { opacity: 0.2; }
   100% { opacity: 1; }
 }
 
-/* Scrollbar styling (opsional) */
 .left-panel::-webkit-scrollbar,
 .right-panel::-webkit-scrollbar {
   width: 8px;
@@ -345,17 +314,16 @@
   background: #000000;
 }
 
-/* Media Queries untuk Tinggi Layar yang Pendek */
 @media (max-height: 700px) {
   .main-logo.center {
     max-height: 25vh;
   }
   .sans-image {
-    top: 28%; /* Naikkan Sans sedikit */
+    top: 28%;
     max-height: 30vh;
   }
   .dialog-and-form-container {
-    top: 52%; /* Naikkan kontainer dialog & form */
+    top: 52%;
   }
   .dialog-box {
     padding: 10px 15px;
@@ -371,7 +339,7 @@
 
 @media (max-height: 550px) {
   .App-container.results-view-active {
-    padding-top: 0; /* Kurangi padding atas jika logo lebih kecil */
+    padding-top: 0; 
   }
   .App-container.results-view-active .left-panel,
   .App-container.results-view-active .right-panel {

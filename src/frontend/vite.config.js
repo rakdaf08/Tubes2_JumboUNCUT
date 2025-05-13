@@ -6,9 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port:3000,
-    // Pengaturan dev server
     proxy: {
-      // Proxy API requests untuk development lokal
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,

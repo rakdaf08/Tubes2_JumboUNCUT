@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// MultiSearchResponse struct (tetap sama)
 type MultiSearchResponse struct {
 	SearchTarget   string            `json:"searchTarget"`
 	Algorithm      string            `json:"algorithm"`
@@ -26,8 +25,6 @@ type MultiSearchResponse struct {
 	Error          string            `json:"error,omitempty"`
 }
 
-
-// searchHandler (bagian ImageURLs tetap sama, karena frontend akan memanggil /api/image)
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -38,7 +35,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	targetElement := strings.TrimSpace(r.URL.Query().Get("target"))
-	// ... (logika validasi targetElement dan title casing tetap sama) ...
 	titleCaseTarget := toTitleCase(targetElement)
 	firstCapTarget := ""
 	if len(targetElement) > 0 {
@@ -62,13 +58,16 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	targetElement = validTarget
 
-
 	algo := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("algo")))
 	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
 	maxRecipesStr := r.URL.Query().Get("max")
 
-	if algo == "" { algo = "bfs" }
-	if mode == "" { mode = "shortest" }
+	if algo == "" {
+		algo = "bfs"
+	}
+	if mode == "" {
+		mode = "shortest"
+	}
 
 	if targetElement == "" {
 		http.Error(w, "Parameter 'target' diperlukan", http.StatusBadRequest)
@@ -130,15 +129,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			pathFound = errSearch == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
 		}
 	} else if algo == "dfs" {
-        if mode == "shortest" {
-            singlePath, nodesVisited, errSearch = FindPathDFS(targetElement)
-            response.Path = singlePath
-            pathFound = errSearch == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElementDFS(targetElement)))
-        } else {
-            multiplePaths, nodesVisited, errSearch = FindMultiplePathsDFS(targetElement, maxRecipes)
-            response.Paths = multiplePaths
-            pathFound = errSearch == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElementDFS(targetElement)))
-        }
+		if mode == "shortest" {
+			singlePath, nodesVisited, errSearch = FindPathDFS(targetElement)
+			response.Path = singlePath
+			pathFound = errSearch == nil && (len(singlePath) > 0 || (len(singlePath) == 0 && isBaseElementDFS(targetElement)))
+		} else {
+			multiplePaths, nodesVisited, errSearch = FindMultiplePathsDFS(targetElement, maxRecipes)
+			response.Paths = multiplePaths
+			pathFound = errSearch == nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElementDFS(targetElement)))
+		}
 	} else if algo == "bds" {
 		if mode == "shortest" {
 			singlePath, nodesVisited, errSearch = FindPathBDS(targetElement)
@@ -150,7 +149,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			pathFound = errSearch == nil && multiplePaths != nil && (len(multiplePaths) > 0 || (len(multiplePaths) == 0 && isBaseElement(targetElement)))
 		}
 	}
-
 
 	duration := time.Since(startTime)
 	log.Printf("Pencarian selesai: Durasi=%v, Nodes Dikeluarkan=%d, Path Ditemukan=%t, Error=%v\n", duration, nodesVisited, pathFound, errSearch)
@@ -186,10 +184,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 		response.ImageURLs = make(map[string]string)
 		for elementName := range elementsInPaths {
-			// URL tetap menunjuk ke endpoint /api/image
-			// Backend yang akan menangani penyajian file lokal dari endpoint tersebut
 			imagePath := fmt.Sprintf("/image/%s.png", elementName)
-        	response.ImageURLs[elementName] = imagePath
+			response.ImageURLs[elementName] = imagePath
 		}
 	}
 
@@ -206,7 +202,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Fungsi toTitleCase (tetap sama)
 func toTitleCase(input string) string {
 	words := strings.Fields(input)
 	result := make([]string, len(words))

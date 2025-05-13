@@ -37,7 +37,6 @@ func runFilter() {
 	}
 	fmt.Printf("Berhasil memuat %d resep mentah.\n", len(initialRecipes))
 
-	// Kumpulkan semua elemen unik dari data mentah
 	initialElementsSet := make(map[string]bool)
 	for _, base := range baseElements {
 		initialElementsSet[base] = true

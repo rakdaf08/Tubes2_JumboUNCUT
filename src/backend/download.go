@@ -16,17 +16,13 @@ import (
 )
 
 const (
-	// Jika image_downloader.go ada di .../src/backend/
-	// dan dijalankan dari .../src/backend/, maka path relatifnya adalah:
-	jsonFilePath    = "data/element_images_urls.json" // Path ke file JSON, relatif dari CWD
-	outputDirData   = "data"                          // Direktori 'data' relatif dari CWD
-	outputDirImages = "image"                         // Subdirektori 'image' di dalam 'outputDirData'
-
+	jsonFilePath           = "data/element_images_urls.json"
+	outputDirData          = "data"
+	outputDirImages        = "image"
 	maxConcurrentDownloads = 10
-	requestTimeout       = 30 * time.Second
+	requestTimeout         = 30 * time.Second
 )
 
-// ... (sisa fungsi sanitizeFilename dan getFileExtension tetap sama) ...
 func sanitizeFilename(name string) string {
 	replacer := strings.NewReplacer(
 		"/", "_",
@@ -73,7 +69,6 @@ func getFileExtension(rawURL string, contentType string) string {
 	log.Printf("Tidak dapat menentukan ekstensi untuk URL: %s, Content-Type: '%s'. Menggunakan default .png\n", rawURL, contentType)
 	return ".png"
 }
-
 
 func downloadFile(element ElementImage, fullOutputDir string, client *http.Client, wg *sync.WaitGroup, sem chan struct{}) {
 	defer wg.Done()
@@ -138,12 +133,6 @@ func maxConcurrentDownload() {
 	}
 	fmt.Printf("Current Working Directory: %s\n", cwd)
 
-	// Path ke file JSON, sekarang relatif terhadap CWD
-	// Jika CWD adalah .../src/backend/, maka jsonFilePath harus "data/element_images_urls.json"
-	// Jika CWD adalah .../src/, maka jsonFilePath harus "backend/data/element_images_urls.json"
-	// Sesuaikan `jsonFilePath` di atas jika CWD Anda berbeda.
-
-	// Menggunakan path yang sudah didefinisikan di konstanta
 	absJsonFilePath, err := filepath.Abs(jsonFilePath)
 	if err != nil {
 		log.Fatalf("Gagal mendapatkan path absolut untuk file JSON '%s' (dari CWD '%s'): %v\n", jsonFilePath, cwd, err)
@@ -167,8 +156,6 @@ func maxConcurrentDownload() {
 	}
 	fmt.Printf("Ditemukan %d elemen gambar untuk diunduh.\n", len(elements))
 
-	// 2. Buat direktori output: CWD/data/image/
-	// Path output akhir relatif terhadap CWD
 	finalOutputDirRel := filepath.Join(outputDirData, outputDirImages)
 	absFinalOutputDir, err := filepath.Abs(finalOutputDirRel)
 	if err != nil {
@@ -185,7 +172,6 @@ func maxConcurrentDownload() {
 		fmt.Printf("Direktori output '%s' sudah ada.\n", absFinalOutputDir)
 	}
 
-	// 3. Setup untuk unduhan konkurensi
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxConcurrentDownloads)
 
@@ -198,7 +184,6 @@ func maxConcurrentDownload() {
 		Transport: customTransport,
 	}
 
-	// 4. Iterasi dan unduh setiap gambar
 	for _, el := range elements {
 		if el.ImageURL == "" {
 			log.Printf("Melewati elemen '%s' karena URL gambar kosong.\n", el.Name)
