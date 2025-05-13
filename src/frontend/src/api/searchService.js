@@ -1,12 +1,8 @@
 // src/frontend/src/api/searchService.js
 
-// Ini akan menjadi URL fallback jika VITE_API_BASE_URL tidak diset saat proses build.
-// Sangat berguna untuk pengembangan lokal jika Anda tidak membuat file .env.development.
+
 const FALLBACK_API_BASE_URL = "https://cozy-contentment-production-7b75.up.railway.app";
 
-// Vite akan secara otomatis mengganti import.meta.env.VITE_API_BASE_URL
-// dengan nilai variabel lingkungan yang sesuai saat proses 'npm run build'.
-// Jika tidak ada, ia akan menggunakan FALLBACK_API_BASE_URL.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || FALLBACK_API_BASE_URL;
 
 const isProduction = import.meta.env.PROD;
