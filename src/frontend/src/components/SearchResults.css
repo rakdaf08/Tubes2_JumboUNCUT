@@ -66,11 +66,10 @@
   border-color: #ff6b6b;
 }
 
-/* PERUBAHAN UTAMA UNTUK TATA LETAK KIRI-KANAN */
 .path-block {
   display: flex;
-  flex-direction: row; /* Mengatur anak-anaknya (kolom detail & kolom visualisasi) berdampingan */
-  gap: 20px; /* Jarak antara kolom kiri dan kanan */
+  flex-direction: row;
+  gap: 20px;
   margin-bottom: 25px;
   padding: 15px;
   border: 1px solid #333;
@@ -78,22 +77,22 @@
   background-color: rgba(10, 10, 10, 0.5);
 }
 
-.path-details-column { /* Kolom kiri untuk teks dan tombol */
-  flex: 1 1 45%; /* Ambil sekitar 45% lebar, bisa disesuaikan */
+.path-details-column {
+  flex: 1 1 45%;
   display: flex;
   flex-direction: column;
-  gap: 10px; /* Jarak antara teks dan tombol */
-  min-width: 0; /* Mencegah overflow jika konten terlalu panjang */
+  gap: 10px;
+  min-width: 0;
 }
 
 .path-text-section {
   overflow-y: auto;
-  max-height: 350px; /* Sesuaikan tinggi maksimum untuk daftar teks */
+  max-height: 350px;
   padding: 10px;
   border: 1px solid #222;
-  border-radius: 4px; /* Tambahkan border-radius */
-  background-color: rgba(0,0,0,0.2); /* Latar belakang sedikit berbeda untuk teks */
-  min-height: 100px; /* Pastikan area teks terlihat */
+  border-radius: 4px;
+  background-color: rgba(0,0,0,0.2);
+  min-height: 100px;
   box-sizing: border-box;
 }
 
@@ -108,9 +107,9 @@
   font-family: inherit;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease, color 0.3s ease, border-color 0.3s ease;
-  align-self: flex-start; /* Tombol rata kiri di dalam kolomnya */
+  align-self: flex-start;
   min-width: 180px;
-  margin-top: 5px; /* Jarak dari atas jika ada elemen di atasnya */
+  margin-top: 5px;
 }
 
 .live-update-button:hover:not(:disabled) {
@@ -128,20 +127,20 @@
   cursor: not-allowed;
 }
 
-.path-visualization-column { /* Kolom kanan untuk visualisasi */
-  flex: 1 1 55%; /* Ambil sisa lebar, bisa disesuaikan */
+.path-visualization-column {
+  flex: 1 1 55%;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Pusatkan judul dan tree-wrapper */
-  min-width: 0; /* Mencegah overflow */
+  align-items: center;
+  min-width: 0;
 }
 
 .visualization-title-small {
-  font-size: 1em; /* Sebelumnya 1em, bisa disesuaikan */
+  font-size: 1em;
   color: #00ffff;
-  margin-top: 0; /* Hapus margin atas jika ini judul pertama di kolomnya */
+  margin-top: 0;
   margin-bottom: 8px;
-  align-self: flex-start; /* Judul rata kiri */
+  align-self: flex-start;
 }
 
 .recipe-path-list {
@@ -153,7 +152,7 @@
 .recipe-path-list-empty {
     color: #888;
     font-style: italic;
-    padding: 10px 0; /* Beri padding agar terlihat */
+    padding: 10px 0;
 }
 
 .recipe-step-item {
@@ -215,17 +214,16 @@
 .path-text-section::-webkit-scrollbar-thumb, .image-urls-list::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
 .path-text-section::-webkit-scrollbar-thumb:hover, .image-urls-list::-webkit-scrollbar-thumb:hover { background: #777; }
 
-/* Media query untuk layar yang lebih kecil, mengembalikan ke tumpukan vertikal */
 @media (max-width: 992px) {
   .path-block {
-    flex-direction: column; /* Kembali ke tumpukan vertikal */
+    flex-direction: column;
   }
   .path-details-column,
   .path-visualization-column {
-    flex-basis: auto; /* Biarkan tinggi menyesuaikan */
-    width: 100%; /* Mengisi lebar penuh saat ditumpuk */
+    flex-basis: auto;
+    width: 100%;
   }
-  .path-visualization-column { /* Sebelumnya .path-visualization-section */
+  .path-visualization-column {
     margin-top: 15px;
     min-height: 350px;
   }
@@ -233,7 +231,7 @@
     height: 350px;
   }
   .live-update-button {
-    align-self: center; /* Pusatkan tombol saat ditumpuk */
+    align-self: center;
   }
 }
 

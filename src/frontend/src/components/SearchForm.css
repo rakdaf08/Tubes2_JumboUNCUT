@@ -17,15 +17,13 @@
   display: flex;
   flex-direction: row;
   gap: 20px;
-  align-items: flex-start; /* Label dan title akan align di atas */
+  align-items: flex-start;
   flex-wrap: wrap;
 }
 
 .target-input-group {
   display: flex;
-  flex-direction: column; /* Label di atas input */
-  /* flex-grow: 1; Dihapus agar lebarnya ditentukan oleh .form-input di bawahnya */
-  /* min-width: 200px; Dihapus atau disesuaikan agar tidak konflik dengan lebar input tetap */
+  flex-direction: column;
 }
 
 .form-label,
@@ -38,18 +36,17 @@
 }
 
 .form-input{
-   background-color: #000000;
+  background-color: #000000;
   color: #FFA500;
   border: 1px solid #FFA500;
   border-radius: 1px;
-  padding: 0 10px; /* DIUBAH: Padding vertikal 0 karena height tetap, padding horizontal tetap */
-  font-size: 24px; /* Sesuaikan jika perlu agar pas di dalam height */
+  padding: 0 10px;
+  font-size: 24px;
   font-family: inherit;
-  /* width: 100%; Dihapus */
-  width: 100%;  /* DIUBAH: Atur lebar yang sama dengan .radio-label. Sesuaikan nilai ini. */
-  height: 80px; /* DIUBAH: Atur tinggi yang sama dengan .radio-label. */
-  display: flex; /* Untuk memusatkan teks di dalam input jika perlu (opsional) */
-  align-items: center; /* Pusatkan teks secara vertikal di dalam input (opsional) */
+  width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: center;
   box-sizing: border-box;
   transition: border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
 }
@@ -59,14 +56,13 @@
   color: #FFA500;
   border: 1px solid #FFA500;
   border-radius: 1px;
-  padding: 0 10px; /* DIUBAH: Padding vertikal 0 karena height tetap, padding horizontal tetap */
-  font-size: 24px; /* Sesuaikan jika perlu agar pas di dalam height */
+  padding: 0 10px;
+  font-size: 24px;
   font-family: inherit;
-  /* width: 100%; Dihapus */
-  width: 100%;  /* DIUBAH: Atur lebar yang sama dengan .radio-label. Sesuaikan nilai ini. */
-  height: 80px; /* DIUBAH: Atur tinggi yang sama dengan .radio-label. */
-  display: flex; /* Untuk memusatkan teks di dalam input jika perlu (opsional) */
-  align-items: center; /* Pusatkan teks secara vertikal di dalam input (opsional) */
+  width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: center;
   box-sizing: border-box;
   transition: border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
 }
@@ -86,12 +82,11 @@
 
 .algo-group {
  flex-basis: auto;
- flex-grow: 1; /* Biarkan grup algoritma mengambil sisa ruang jika ada */
- /* min-width: 320px; Dihapus atau disesuaikan, karena lebar tombol radio tetap */
+ flex-grow: 1;
 }
 
 .mode-group {
- /* min-width: 220px; Dihapus atau disesuaikan */
+
 }
 
 .radio-group {
@@ -107,18 +102,18 @@
   display: none;
 }
 
-.radio-label { /* Tombol BFS, DFS, BDS */
+.radio-label {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 17.5%;  /* DIUBAH: Atur lebar tetap. Sesuaikan nilai ini. (Sebelumnya min-width: 100px) */
-  height: 80px; /* Tinggi tetap, sudah ada */
+  width: 17.5%;
+  height: 80px;
   padding: 0 100px;
   border: 1px solid #FFA500;
   border-radius: 1px;
   background-color: #000000;
   color: #FFA500;
-  font-size: 25px; /* Sesuaikan jika perlu agar teks pas */
+  font-size: 25px;
   cursor: pointer;
   text-align: center;
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
